@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Curated Portfolio | Ashraa Media</title>
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* Clean Call Modal */
+    .modal {
+      position: fixed !important;
+      inset: 0 !important;
+      background: rgba(0, 0, 0, 0.9) !important;
+      backdrop-filter: blur(12px) !important;
+      display: none;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 999999 !important;
+      padding: 1.5rem !important;
+    }
+    .modal-box {
+      width: 100%;
+      max-width: 480px;
+      background: #0f1219;
+      border: 1px solid #232938;
+      border-radius: 12px;
+      padding: 2.2rem 1.8rem;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95);
+    }
+</style>
+</head>
+<body>
+
+  <!-- Ambient Mesh Background -->
+  <div class="ambient-mesh"></div>
+
+  <!-- Fixed Clean Navigation Bar -->
+  <header>
+    <div class="container nav-wrapper">
+      <a href="index.html" class="brand">Ashraa Media</a>
+      
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link">Home</a></li>
+          <li><a href="services.html" class="nav-link active">Services</a></li>
+          <li><a href="portfolio.html" class="nav-link">Portfolio</a></li>
+          <li><a href="pricing.html" class="nav-link">Pricing</a></li>
+          <li><a href="about.html" class="nav-link">About</a></li>
+          <li><a href="contact.html" class="nav-link">Contact</a></li>
+        </ul>
+      </nav>
+
+      <!-- Clean Header Call Button -->
+      <button class="btn-call call-trigger" onclick="openCallModal()">
+        <svg viewBox="0 0 24 24"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.59l2.2-2.21a1 1 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2a9 9 0 0 0-9-9v2a7 7 0 0 1 7 7z"/></svg>
+        Book 20-Min Call
+      </button>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div class="section-head">
+      <span class="section-label">Capabilities</span>
+      <h1>Services Built to Scale</h1>
+      <p>Video post-production tailored for social creators, founders, and modern brands.</p>
+    </div>
+
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="service-icon">📱</div>
+        <h4>Short-Form Video (9:16)</h4>
+        <p>High-engagement Instagram Reels, YouTube Shorts, and TikToks designed with visual hooks, sound accents, and kinetic captions.</p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">🎬</div>
+        <h4>YouTube & Long-Form</h4>
+        <p>Documentary and vlog edits crafted with retention curve analysis, chaptering, and rhythm-synced B-roll sequencing.</p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">🎨</div>
+        <h4>Cinematic Color Grading</h4>
+        <p>Professional color correction and distinct cinematic look design in DaVinci Resolve Studio to fit your brand identity.</p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">🔊</div>
+        <h4>Sound Design & Mixing</h4>
+        <p>Atmospheric foley, risers, impactful transition whooshes, and broadcast-level audio mastering.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- 20-Minute Strategy Call Popup Modal -->
+  <div class="modal" id="callModal">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.4rem;">
+        <div>
+          <span class="section-label" style="font-size: 0.7rem; margin-bottom: 2px;">Private Consultation</span>
+          <h3 style="font-size: 1.4rem; font-weight: 700; color: #fff;">20-Min Strategy Call</h3>
+        </div>
+        <button class="modal-close" onclick="closeCallModal()">&times;</button>
+      </div>
+
+      <form id="callForm" onsubmit="handleCallSubmit(event)">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Your Name or Brand</label>
+          <input type="text" id="callerName" required placeholder="e.g. Julian / Atelier Media" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Preferred Date</label>
+          <input type="date" id="callDate" required style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Preferred Time Window</label>
+          <div class="slot-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
+            <button type="button" class="slot-btn active" onclick="setSlot(this, 'Morning (10 AM - 1 PM)')" style="background:#6366f1; color:#fff; border:none; padding:8px 6px; border-radius:4px; font-size:0.78rem; cursor:pointer;">10 AM - 1 PM</button>
+            <button type="button" class="slot-btn" onclick="setSlot(this, 'Afternoon (2 PM - 5 PM)')" style="background:#151923; color:#94a3b8; border:1px solid #232938; padding:8px 6px; border-radius:4px; font-size:0.78rem; cursor:pointer;">2 PM - 5 PM</button>
+            <button type="button" class="slot-btn" onclick="setSlot(this, 'Evening (6 PM - 9 PM)')" style="background:#151923; color:#94a3b8; border:1px solid #232938; padding:8px 6px; border-radius:4px; font-size:0.78rem; cursor:pointer;">6 PM - 9 PM</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.2rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Discussion Focus Area</label>
+          <select id="callTopic" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+            <option value="Short-Form / Reels Retention Direction">Short-Form / Reels Retention Direction</option>
+            <option value="YouTube Long-Form / Documentary Pacing">YouTube Long-Form / Documentary Pacing</option>
+            <option value="Commercial Campaign & Look Development">Commercial Campaign & Look Development</option>
+            <option value="Monthly Private Retainer Suite">Monthly Private Retainer Suite</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;">
+          Confirm 20-Min Session &rarr;
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; 2026 Ashraa Media. All rights reserved.</p>
+  </footer>
+
+  <a href="https://wa.me/916201607744?text=Hi%20Ashraa%20Media,%20I'm%20inquiring%20about%20your%20services." 
+     class="whatsapp-fab" 
+     target="_blank" 
+     rel="noopener noreferrer">
+    <svg viewBox="0 0 24 24">
+      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.13.82.84-3.05-.2-.32a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.21 8.23z"/>
+    </svg>
+    Chat on WhatsApp
+  </a>
+
+  <!-- Self-Contained Functions (Guarantees Popup Opens 100%) -->
+  <script>
+    const PHONE = "916201607744";
+    let selectedSlot = "Morning (10 AM - 1 PM)";
+
+    function openCallModal() {
+      const modal = document.getElementById('callModal');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeCallModal() {
+      const modal = document.getElementById('callModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    function setSlot(btn, slotName) {
+      document.querySelectorAll('.slot-btn').forEach(b => {
+        b.style.background = '#151923';
+        b.style.color = '#94a3b8';
+      });
+      btn.style.background = '#6366f1';
+      btn.style.color = '#fff';
+      selectedSlot = slotName;
+    }
+
+    function handleCallSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('callerName').value.trim();
+      const date = document.getElementById('callDate').value;
+      const topic = document.getElementById('callTopic').value;
+
+      const msg = `Hello Ashraa Media! I want to book a *20-Minute Strategy Session*.\n\n*Name:* ${name}\n*Date:* ${date}\n*Slot:* ${selectedSlot}\n*Topic:* ${topic}`;
+      window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
+      closeCallModal();
+    }
+
+    // Close modal when clicking outside the box
+    window.addEventListener('click', (e) => {
+      const modal = document.getElementById('callModal');
+      if (e.target === modal) closeCallModal();
+    });
+  </script>
+
+  <script src="script.js"></script>
+</body>
+</html>

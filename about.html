@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us | Ashraa Media</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>.modal {
+      position: fixed !important;
+      inset: 0 !important;
+      background: rgba(0, 0, 0, 0.9) !important;
+      backdrop-filter: blur(12px) !important;
+      display: none;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 999999 !important;
+      padding: 1.5rem !important;
+    }
+    .modal-box {
+      width: 100%;
+      max-width: 480px;
+      background: #0f1219;
+      border: 1px solid #232938;
+      border-radius: 12px;
+      padding: 2.2rem 1.8rem;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="cursorSpotlight"></div>
+  <div class="film-grain"></div>
+    
+  <!-- Fixed Clean Navigation Bar -->
+  <header>
+    <div class="container nav-wrapper">
+      <a href="index.html" class="brand">Ashraa Media</a>
+      
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link">Home</a></li>
+          <li><a href="services.html" class="nav-link">Services</a></li>
+          <li><a href="portfolio.html" class="nav-link">Portfolio</a></li>
+          <li><a href="pricing.html" class="nav-link">Pricing</a></li>
+          <li><a href="about.html" class="nav-link active ">About</a></li>
+          <li><a href="contact.html" class="nav-link">Contact</a></li>
+        </ul>
+      </nav>
+
+      <!-- Clean Header Call Button -->
+      <button class="btn-call" onclick="openCallModal()">
+        <svg viewBox="0 0 24 24"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.59l2.2-2.21a1 1 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2a9 9 0 0 0-9-9v2a7 7 0 0 1 7 7z"/></svg>
+        Book 20-Min Call
+      </button>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div class="section-head">
+      <span class="section-label">Our Philosophy</span>
+      <h1>We Don't Just Edit. We Stop The Scroll.</h1>
+      <p>Turning complex raw footage into visual stories that convert attention into loyal followers.</p>
+    </div>
+
+    <div class="about-box">
+      <div>
+        <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: #fff;">Engineered for Retention & Growth</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1rem; line-height: 1.7;">Ashraa Media is a dedicated post-production studio focused on helping content creators, personal brands, and modern businesses scale their digital footprint through high-impact video.</p>
+        <p style="color: var(--text-muted); line-height: 1.7;">From hook structuring and rhythm cutting to cinematic soundscapes and custom color grading, we eliminate the post-production bottleneck so you can focus entirely on creating and recording.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+          <h5 style="color: #fff; font-size: 1rem; margin-bottom: 0.35rem;">⚡ Fast Turnarounds</h5>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Shorts, reels, and YouTube edits ready within 24–48 hours so you never miss an upload cycle.</p>
+        </div>
+        <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+          <h5 style="color: #fff; font-size: 1rem; margin-bottom: 0.35rem;">🎯 Algorithm & Retention Focus</h5>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Every cut, punch-in, and SFX cue is calibrated around viewer hold rates and watch time.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Editing Tools Section (Requested Feature) -->
+    <section class="editing-tools-section">
+      <div class="editing-tools-header">
+        <h2>Editing Tools</h2>
+        <p>We work inside battle-tested, industry-standard post-production suites to craft seamless cuts, kinetic captions, and high-fidelity master exports.</p>
+      </div>
+
+      <div class="editing-tools-group">
+        <!-- Adobe Premiere Pro Tool Card -->
+        <div class="tool-pill" title="Adobe Premiere Pro - Primary NLE & Timeline Assembly">
+          <div class="tool-icon-badge tool-icon-pr">Pr</div>
+          <span class="tool-pill-name">Adobe Premiere Pro</span>
+        </div>
+
+        <!-- CapCut Tool Card -->
+        <div class="tool-pill" title="CapCut - Trending Effects, Kinetic Captions & Mobile Retention">
+          <div class="tool-icon-badge tool-icon-capcut">
+            <svg viewBox="0 0 25 24" fill="currentColor" aria-label="CapCut Logo">
+              <path d="M24.189 6.442V2.671l-4.535 2.383V4.91c.002-1.505-1.078-2.411-2.638-2.411H2.64C.993 2.5 0 3.407 0 4.91V8.72L6.354 12 0 15.316v3.8C0 20.595 1 21.5 2.64 21.5h14.373c1.56 0 2.639-.907 2.639-2.382v-.197l4.536 2.409v-3.828L13.64 12 24.19 6.443zM9.982 13.873l7.797 4.083H2.157l7.825-4.083zm7.741-7.828l-7.742 4.057-7.825-4.057h15.567z" />
+            </svg>
+          </div>
+          <span class="tool-pill-name">CapCut</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- The 4 Pillars of Our Craft -->
+    <section style="margin: 4.5rem 0 2rem;">
+      <div class="section-head">
+        <span class="section-label">The Studio Standard</span>
+        <h2>How We Elevate Your Content</h2>
+        <p>Four core disciplines integrated into every single timeline export.</p>
+      </div>
+
+      <div class="about-pillars-grid">
+        <div class="about-pillar-card">
+          <h4>🎯 Retention Hooks</h4>
+          <p>The first 3 seconds decide whether a viewer stays or swipes away. We engineer dynamic intros, text overlays, and sound design to hook your audience instantly.</p>
+        </div>
+
+        <div class="about-pillar-card">
+          <h4>✂️ Rhythm Pacing</h4>
+          <p>Dead air and repetitive words kill momentum. We tighten breathing space, drop rhythmic B-roll cuts, and maintain constant forward narrative energy.</p>
+        </div>
+
+        <div class="about-pillar-card">
+          <h4>🎨 Color Grading</h4>
+          <p>Professional contrast grading, rich highlights, and natural skin-tone protection engineered to pop vibrantly across modern mobile displays and YouTube feeds.</p>
+        </div>
+
+        <div class="about-pillar-card">
+          <h4>🔊 Spatial Soundscapes</h4>
+          <p>Sound is 50% of the video experience. We balance dialogue with atmospheric foley, crisp risers, whooshes, and broadcast-ready audio compression.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Closing Call Banner (Properly Enclosed) -->
+    <section class="call-banner-container" style="margin-top: 5rem;">
+      <div class="call-card">
+        <div class="call-card-info">
+          <span class="section-label" style="margin-bottom: 4px;">Private Consultation</span>
+          <h3>Have a Vision for Your Next Video?</h3>
+          <p>Book a free 20-minute strategy call to discuss your raw footage, narrative pacing, and audience retention goals.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openCallModal()" style="white-space: nowrap;">
+          Book 20-Min Strategy Call &rarr;
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 20-Minute Strategy Call Popup Modal -->
+  <div class="modal" id="callModal" role="dialog" aria-modal="true" aria-labelledby="callModalTitle">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.4rem;">
+        <div>
+          <span class="section-label" style="font-size: 0.7rem; margin-bottom: 2px;">Private Consultation</span>
+          <h3 id="callModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #fff;">20-Min Strategy Call</h3>
+        </div>
+        <button class="modal-close" onclick="closeCallModal()" style="background:transparent; border:none; color:#94a3b8; font-size:1.8rem; cursor:pointer;" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <form id="callForm" onsubmit="handleCallSubmit(event)">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="callerName" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Your Name or Brand</label>
+          <input type="text" id="callerName" required placeholder="e.g. Julian / Atelier Media" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="callDate" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Preferred Date</label>
+          <input type="date" id="callDate" required style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Preferred Time Window</label>
+          <div class="slot-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
+            <button type="button" class="slot-btn active" onclick="setSlot(this, 'Morning (10 AM - 1 PM)')" style="background:#6366f1; color:#fff; border:none; padding:8px 6px; border-radius:4px; font-size:0.78rem; cursor:pointer;">10 AM - 1 PM</button>
+            <button type="button" class="slot-btn" onclick="setSlot(this, 'Afternoon (2 PM - 5 PM)')" style="background:#151923; color:#94a3b8; border:1px solid #232938; padding:8px 6px; border-radius:4px; font-size:0.78rem; cursor:pointer;">2 PM - 5 PM</button>
+            <button type="button" class="slot-btn" onclick="setSlot(this, 'Evening (6 PM - 9 PM)')" style="background:#151923; color:#94a3b8; border:1px solid #232938; padding:8px 6px; border-radius:4px; font-size:0.78rem; cursor:pointer;">6 PM - 9 PM</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.2rem;">
+          <label for="callTopic" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Discussion Focus Area</label>
+          <select id="callTopic" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+            <option value="Short-Form / Reels Retention Direction">Short-Form / Reels Retention Direction</option>
+            <option value="YouTube Long-Form / Documentary Pacing">YouTube Long-Form / Documentary Pacing</option>
+            <option value="Commercial Campaign & Look Development">Commercial Campaign & Look Development</option>
+            <option value="Monthly Private Retainer Suite">Monthly Private Retainer Suite</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px; font-weight:700;">
+          Confirm 20-Min Session &rarr;
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; 2026 Ashraa Media. All rights reserved.</p>
+  </footer>
+
+  <!-- Floating WhatsApp Button -->
+  <a href="https://wa.me/916201607744?text=Hi%20Ashraa%20Media,%20I'm%20reaching%20out%20from%20your%20about%20page." 
+     class="whatsapp-fab" 
+     target="_blank" 
+     rel="noopener noreferrer"
+     aria-label="Chat on WhatsApp">
+    <svg viewBox="0 0 24 24">
+      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.13.82.84-3.05-.2-.32a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.21 8.23z"/>
+    </svg>
+    Chat on WhatsApp
+  </a>
+
+  <!-- Main Engine Script -->
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing & Payment | Ashraa Media</title>
+  <link rel="stylesheet" href="style.css?v=2">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <div class="ambient-mesh"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="container nav-wrapper">
+      <a href="index.html" class="brand">Ashraa Media</a>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link">Home</a></li>
+          <li><a href="services.html" class="nav-link">Services</a></li>
+          <li><a href="portfolio.html" class="nav-link">Portfolio</a></li>
+          <li><a href="pricing.html" class="nav-link active">Pricing</a></li>
+          <li><a href="about.html" class="nav-link">About</a></li>
+          <li><a href="contact.html" class="nav-link">Contact</a></li>
+        </ul>
+      </nav>
+
+      <button class="btn-call" onclick="openCallModal()">
+        <svg viewBox="0 0 24 24"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.59l2.2-2.21a1 1 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2a9 9 0 0 0-9-9v2a7 7 0 0 1 7 7z"/></svg>
+        Book 20-Min Call
+      </button>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div class="section-head">
+      <span class="section-label">Transparent Rates</span>
+      <h1>Choose Your Package</h1>
+      <p>Select your package and click "Pay Now" to open the interactive UPI & QR payment modal.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Starter -->
+      <div class="pricing-card">
+        <h4>Starter Creator</h4>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">Ideal for consistent social presence.</p>
+        <div class="price-amount">₹4,999</div>
+        <ul>
+          <li>✓ 8 Short-form Reels / Shorts</li>
+          <li>✓ 48h Delivery Turnaround</li>
+          <li>✓ Kinetic Subtitles & Sound FX</li>
+          <li>✓ 2 Revisions per video</li>
+        </ul>
+        <button class="btn btn-secondary pay-trigger-btn" data-plan="Starter Creator" data-amount="4999" onclick="openPayModal('Starter Creator', 4999)">
+          Pay ₹4,999 Now &rarr;
+        </button>
+      </div>
+
+      <!-- Growth -->
+      <div class="pricing-card featured">
+        <span class="featured-badge">Most Popular</span>
+        <h4>Brand Growth</h4>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">Complete monthly video production.</p>
+        <div class="price-amount">₹9,999</div>
+        <ul>
+          <li>✓ 16 Short-form Reels/Shorts</li>
+          <li>✓ 2 Long-form YouTube Edits</li>
+          <li>✓ Priority 24h Delivery</li>
+          <li>✓ Motion Graphics & DaVinci Grade</li>
+          <li>✓ Unlimited Revisions</li>
+        </ul>
+        <button class="btn btn-primary pay-trigger-btn" data-plan="Brand Growth" data-amount="9999" onclick="openPayModal('Brand Growth', 9999)">
+          Pay ₹9,999 Now &rarr;
+        </button>
+      </div>
+
+      <!-- Scale -->
+      <div class="pricing-card">
+        <h4>Agency Scale</h4>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">For high-volume channels & businesses.</p>
+        <div class="price-amount">₹19,999</div>
+        <ul>
+          <li>✓ 30+ Video Edits / Month</li>
+          <li>✓ Dedicated Lead Video Editor</li>
+          <li>✓ Custom Thumbnails & Packaging</li>
+          <li>✓ Direct WhatsApp Slack Channel</li>
+        </ul>
+        <button class="btn btn-secondary pay-trigger-btn" data-plan="Agency Scale" data-amount="19999" onclick="openPayModal('Agency Scale', 19999)">
+          Pay ₹19,999 Now &rarr;
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 1. PAYMENT MODAL -->
+  <div class="modal" id="paymentModal">
+    <div class="modal-box" style="text-align: center;">
+      <div class="pay-header">
+        <div style="text-align: left;">
+          <span class="pay-badge" id="payPlanBadge">Selected Plan</span>
+          <h3 id="payPlanTitle" style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0;">Complete Payment</h3>
+        </div>
+        <button class="modal-close" id="payModalClose" onclick="closePayModal()" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div style="text-align: center; margin: 0.5rem 0 0.8rem;">
+        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 2px;">Paying directly to <strong>Ashraa Media</strong></p>
+        <div id="payAmountDisplay" class="pay-amount-hero">₹0</div>
+      </div>
+
+      <!-- QR Code Mode Switcher -->
+      <div class="qr-toggle-group">
+        <button type="button" class="qr-toggle-btn active" id="qrBtnGpay" onclick="switchQrMode('gpay')">
+          Official GPay QR
+        </button>
+        <button type="button" class="qr-toggle-btn" id="qrBtnDynamic" onclick="switchQrMode('dynamic')">
+          Prefilled Amount QR
+        </button>
+      </div>
+
+      <!-- QR Code Display Card -->
+      <div class="qr-card">
+        <img id="upiQrCode" src="assets/upi-qr.png" alt="Scan to Pay via UPI" />
+      </div>
+
+      <div class="supported-apps-row">
+        <span>Scan with <strong>GPay</strong>, <strong>PhonePe</strong>, <strong>Paytm</strong>, or <strong>BHIM</strong></span>
+      </div>
+
+      <!-- Copy UPI ID Box -->
+      <div class="upi-id-container">
+        <div style="text-align: left; overflow: hidden;">
+          <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">UPI ID (Click to Copy)</div>
+          <div class="upi-id-text" id="upiIdDisplay">ashraaofficial@okicici</div>
+        </div>
+        <button type="button" class="btn-copy-upi" id="btnCopyUpi" onclick="copyUpiId()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span>Copy</span>
+        </button>
+      </div>
+
+      <!-- Direct Pay on Phone -->
+      <div class="pay-actions">
+        <a id="mobileUpiBtn" href="#" class="btn btn-primary" style="justify-content: center; width: 100%;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          Pay via UPI App (Mobile)
+        </a>
+      </div>
+
+      <!-- Payment Confirmation Section (Saves to Supabase & Confirms on WhatsApp) -->
+      <div class="payment-confirm-section">
+        <h4>Confirm Your Payment</h4>
+        <p>Already paid? Enter your UPI Reference / UTR number below to register your order and verify on WhatsApp:</p>
+
+        <form id="paymentConfirmForm" onsubmit="handlePaymentSubmit(event)">
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label style="font-size: 0.78rem;">Your Name / Channel</label>
+            <input type="text" id="payClientName" placeholder="e.g. Julian / Atelier Media" required style="padding: 8px 12px; font-size: 0.85rem;" />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.9rem;">
+            <label style="font-size: 0.78rem;">UPI Reference ID / UTR (12 digits from receipt)</label>
+            <input type="text" id="payUtrNumber" placeholder="e.g. 425367890123" maxlength="24" style="padding: 8px 12px; font-size: 0.85rem;" />
+          </div>
+
+          <button type="submit" id="btnConfirmPay" class="btn btn-secondary" style="width: 100%; justify-content: center; border-color: var(--whatsapp); color: var(--whatsapp); font-weight: 700;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px;"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.13.82.84-3.05-.2-.32a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.21 8.23z"/></svg>
+            Confirm & Share on WhatsApp
+          </button>
+        </form>
+
+        <div class="payment-success-card" id="paymentSuccessCard">
+          <h5>✓ Payment Details Registered!</h5>
+          <p>Redirecting to WhatsApp to send screenshot. Our production team will verify and start your project within 2 hours.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 2. 20-MIN CALL MODAL (Now Added to Pricing Page) -->
+  <div class="modal" id="callModal">
+    <div class="modal-box" style="max-width: 480px; padding: 2.5rem 2rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.4rem;">
+        <div>
+          <span class="section-label" style="font-size: 0.7rem; margin-bottom: 2px;">Private Consultation</span>
+          <h3 style="font-size: 1.4rem; font-weight: 700; color: #fff;">20-Min Strategy Call</h3>
+        </div>
+        <button class="modal-close" id="callModalClose" onclick="closeCallModal()">&times;</button>
+      </div>
+
+      <form id="callForm">
+        <div class="form-group">
+          <label>Your Name or Brand</label>
+          <input type="text" id="callerName" required placeholder="e.g. Julian / Atelier Media">
+        </div>
+
+        <div class="form-group">
+          <label>Preferred Date</label>
+          <input type="date" id="callDate" required>
+        </div>
+
+        <div class="form-group">
+          <label>Preferred Time Window</label>
+          <div class="slot-grid">
+            <button type="button" class="slot-btn active" data-slot="Morning (10 AM - 1 PM)">10 AM - 1 PM</button>
+            <button type="button" class="slot-btn" data-slot="Afternoon (2 PM - 5 PM)">2 PM - 5 PM</button>
+            <button type="button" class="slot-btn" data-slot="Evening (6 PM - 9 PM)">6 PM - 9 PM</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Discussion Focus Area</label>
+          <select id="callTopic">
+            <option value="Short-Form / Reels Retention Direction">Short-Form / Reels Retention Direction</option>
+            <option value="YouTube Long-Form / Documentary Pacing">YouTube Long-Form / Documentary Pacing</option>
+            <option value="Commercial Campaign & Look Development">Commercial Campaign & Look Development</option>
+            <option value="Monthly Private Retainer Suite">Monthly Private Retainer Suite</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 0.5rem;">
+          Confirm 20-Min Session &rarr;
+        </button>
+      </form>
+    </div>
+  </div>
+  <footer>
+    <p>&copy; 2026 Ashraa Media. All rights reserved.</p>
+  </footer>
+
+  <a href="https://wa.me/916201607744?text=Hi%20Ashraa%20Media,%20I'm%20inquiring%20about%20your%20pricing." 
+     class="whatsapp-fab" 
+     target="_blank" 
+     rel="noopener noreferrer">
+    <svg viewBox="0 0 24 24">
+      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.13.82.84-3.05-.2-.32a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.21 8.23z"/>
+    </svg>
+    Chat on WhatsApp
+  </a>
+
+  <script src="script.js?v=2"></script>
+</body>
+</html>

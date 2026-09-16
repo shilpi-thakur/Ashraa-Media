@@ -1,0 +1,127 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// 1. Portfolio Video Showcases (Google Drive ID, 16:9 vs 9:16, Category)
+model Project {
+  id           String      @id @default(uuid())
+  title        String
+  description  String?
+  category     Category    @default(SHORTS)
+  ratio        AspectRatio @default(RATIO_16_9)
+  driveId      String      // Google Drive File ID
+  thumbnailUrl String?
+  tags         String?     // e.g. "Color Grading, Sound Design"
+  isFeatured   Boolean     @default(false)
+  orderIndex   Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("projects")
+}
+
+enum Category {
+  SHORTS       // 9:16 Reels / Shorts / TikToks
+  LONGFORM     // 16:9 YouTube / Documentary
+  COMMERCIAL   // Commercial & Brand Films
+  COLOR_GRADE  // DaVinci Color Showcases
+}
+
+enum AspectRatio {
+  RATIO_16_9
+  RATIO_9_16
+}
+
+// 2. Pricing Packages & Atelier Retainers
+model Package {
+  id          String    @id @default(uuid())
+  title       String    // e.g. "Signature Retainer"
+  slug        String    @unique
+  priceINR    Int       // e.g. 9999
+  turnaround  String    // e.g. "24–48h"
+  description String
+  features    String    // Bullet points / perks
+  isPopular   Boolean   @default(false)
+  payments    Payment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("packages")
+}
+
+// 3. 20-Minute Strategy Call Bookings
+model StrategyCall {
+  id            String        @id @default(uuid())
+  callerName    String
+  phoneOrWa     String?       // WhatsApp or phone number
+  email         String?
+  preferredDate DateTime
+  timeWindow    String        // e.g. "Morning (10 AM - 1 PM)"
+  topic         String        // e.g. "Short-Form Retention Direction"
+  notes         String?
+  status        BookingStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+
+  @@map("strategy_calls")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+// 4. Client Inquiries & Custom Quotes
+model Inquiry {
+  id          String   @id @default(uuid())
+  service     String
+  clientName  String?
+  phone       String?
+  email       String?
+  scopeNotes  String?
+  createdAt   DateTime @default(now())
+
+  @@map("inquiries")
+}
+
+// 5. Payments & Commission Receipts (UPI / Gateway)
+model Payment {
+  id            String        @id @default(uuid())
+  packageId     String?
+  package       Package?      @relation(fields: [packageId], references: [id])
+  planName      String
+  amountINR     Int
+  upiRefNumber  String?       // UPI Transaction ID / UTR
+  paymentMethod String        @default("UPI")
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+// 6. Admin Account (For Dashboard Management)
+model AdminUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hashed password
+  name      String   @default("Aashra Admin")
+  createdAt DateTime @default(now())
+
+  @@map("admin_users")
+}
