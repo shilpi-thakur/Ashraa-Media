@@ -27,6 +27,17 @@
       box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95);
     }
   </style>
+  <script>
+    (function() {
+      try {
+        var u = localStorage.getItem('ashraa_auth_user');
+        var g = sessionStorage.getItem('ashraa_guest_browsing');
+        if (!u && !g) {
+          document.documentElement.classList.add('show-auth-portal');
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
 
@@ -64,6 +75,11 @@
 
       <!-- 2. Email & Password Login Form -->
       <form id="authLoginForm" onsubmit="handleEmailAuth(event)">
+        <div class="form-group" id="authNameGroup" style="display: none; margin-bottom: 0.9rem;">
+          <label for="authName" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Full Name</label>
+          <input type="text" id="authName" placeholder="Your Name or Studio Name" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
+        </div>
+
         <div class="form-group" style="margin-bottom: 0.9rem;">
           <label for="authEmail" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Email Address</label>
           <input type="email" id="authEmail" required placeholder="creator@brand.com" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
@@ -125,7 +141,7 @@
           <li><a href="pricing.html" class="nav-link">Pricing</a></li>
           <li><a href="about.html" class="nav-link active">About</a></li>
           <li><a href="contact.html" class="nav-link">Contact</a></li>
-          <li class="nav-item-auth" id="navLoginItem"><a href="login.html" class="nav-link nav-link-login" id="navLoginLink">Login</a></li>
+          <li class="nav-item-auth" id="navLoginItem"><a href="login.html" class="nav-link nav-link-login" id="navLoginLink" onclick="if(document.getElementById('authModal')){ openAuthModal(); return false; }">Login</a></li>
           <li class="nav-item-user" id="navUserItem" style="display: none;">
             <div class="nav-user-dropdown-wrap">
               <button type="button" class="nav-user-btn" id="navUserBtn" onclick="toggleUserDropdown(event)" aria-label="User Profile Menu" aria-expanded="false">

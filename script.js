@@ -42,19 +42,54 @@ function extractDriveId(input) {
 }
 
 // Global Video Lightbox Controllers
-// Map of known portfolio video assets for reliable in-page playback
+// Comprehensive map of known portfolio video assets for reliable in-page local playback
 const KNOWN_PORTFOLIO_VIDEOS = {
+  // Reel 1: Documentary Storytelling Reel
   '17gGoKwbjlQ0jb7pY5NVpULoyWxBMhgOJ': {
     src: 'assets/videos/reel-1.mp4',
     poster: 'assets/thumb-reel-1.jpg',
     title: 'Documentary Storytelling Reel'
   },
+  'assets/videos/reel-1.mp4': {
+    src: 'assets/videos/reel-1.mp4',
+    poster: 'assets/thumb-reel-1.jpg',
+    title: 'Documentary Storytelling Reel'
+  },
+  'reel-1.mp4': {
+    src: 'assets/videos/reel-1.mp4',
+    poster: 'assets/thumb-reel-1.jpg',
+    title: 'Documentary Storytelling Reel'
+  },
+
+  // Reel 2: Viral Retention Hook
   '1JUDKEyJjB47jBiLS3bCKlOBk_UroBvuB': {
     src: 'assets/videos/reel-2.mp4',
     poster: 'assets/thumb-reel-2.jpg',
     title: 'Viral Retention Hook'
   },
+  'assets/videos/reel-2.mp4': {
+    src: 'assets/videos/reel-2.mp4',
+    poster: 'assets/thumb-reel-2.jpg',
+    title: 'Viral Retention Hook'
+  },
+  'reel-2.mp4': {
+    src: 'assets/videos/reel-2.mp4',
+    poster: 'assets/thumb-reel-2.jpg',
+    title: 'Viral Retention Hook'
+  },
+
+  // Reel 3: Haute Cinematic Reel
   '1WvZ1WSDI1Uvqy52nhe62HeizqrcuYWi-': {
+    src: 'assets/videos/reel-3.mp4',
+    poster: 'assets/thumb-reel-3.jpg',
+    title: 'Haute Cinematic Reel'
+  },
+  'assets/videos/reel-3.mp4': {
+    src: 'assets/videos/reel-3.mp4',
+    poster: 'assets/thumb-reel-3.jpg',
+    title: 'Haute Cinematic Reel'
+  },
+  'reel-3.mp4': {
     src: 'assets/videos/reel-3.mp4',
     poster: 'assets/thumb-reel-3.jpg',
     title: 'Haute Cinematic Reel'
@@ -68,6 +103,9 @@ window.openVideoModal = function(videoTarget, title, ratio, poster) {
   const modalIframe = document.getElementById('modalIframe');
   const modalHeading = document.getElementById('modalHeading');
   const playerWrap = document.getElementById('playerWrap');
+  const videoLoader = document.getElementById('videoLoader');
+  const videoUnmuteBtn = document.getElementById('videoUnmuteBtn');
+  const videoCenterPlay = document.getElementById('videoCenterPlay');
 
   const cleanId = extractDriveId(videoTarget);
   let actualSrc = videoTarget;
@@ -80,30 +118,14 @@ window.openVideoModal = function(videoTarget, title, ratio, poster) {
   } else if (KNOWN_PORTFOLIO_VIDEOS[videoTarget]) {
     actualSrc = KNOWN_PORTFOLIO_VIDEOS[videoTarget].src;
     if (!actualPoster) actualPoster = KNOWN_PORTFOLIO_VIDEOS[videoTarget].poster;
+    if (!title || title === 'Preview Video') title = KNOWN_PORTFOLIO_VIDEOS[videoTarget].title;
   } else if (!videoTarget.includes('/') && !videoTarget.includes('.')) {
     actualSrc = `https://drive.usercontent.google.com/download?id=${cleanId}&export=download`;
   }
 
   if (modalHeading) modalHeading.textContent = title || 'Preview Video';
 
-  if (modalVideo) {
-    modalVideo.style.display = 'block';
-    if (modalIframe) modalIframe.style.display = 'none';
-    if (actualPoster) modalVideo.poster = actualPoster;
-    modalVideo.src = actualSrc;
-    modalVideo.load();
-
-    const playPromise = modalVideo.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(err => {
-        console.log("Auto-play paused, user can click play to start:", err);
-      });
-    }
-  } else if (modalIframe) {
-    modalIframe.style.display = 'block';
-    modalIframe.src = actualSrc;
-  }
-
+  // Modal sizing & visibility
   if (videoModal) {
     if (ratio === '9-16') {
       videoModal.classList.add('ratio-vertical');
@@ -118,12 +140,73 @@ window.openVideoModal = function(videoTarget, title, ratio, poster) {
     if (ratio === '9-16') playerWrap.classList.add('ratio-9-16');
     else playerWrap.classList.remove('ratio-9-16');
   }
+
+  if (modalVideo) {
+    modalVideo.style.display = 'block';
+    if (modalIframe) modalIframe.style.display = 'none';
+
+    // Reset overlay elements
+    if (videoUnmuteBtn) videoUnmuteBtn.style.display = 'none';
+    if (videoCenterPlay) videoCenterPlay.style.display = 'none';
+
+    // If modalVideo is already loaded with this exact source, just ensure it plays
+    const currentActiveSrc = modalVideo.getAttribute('data-active-src') || '';
+    if (currentActiveSrc !== actualSrc) {
+      modalVideo.setAttribute('data-active-src', actualSrc);
+      if (actualPoster) modalVideo.poster = actualPoster;
+      
+      // Display buffer loader while video initial frames load
+      if (videoLoader) videoLoader.style.display = 'flex';
+
+      modalVideo.src = actualSrc;
+      // Note: Do NOT call modalVideo.load() immediately before play() to avoid interrupting the promise
+    } else {
+      if (modalVideo.paused && videoLoader) {
+        videoLoader.style.display = 'flex';
+      }
+    }
+
+    const hideLoader = () => {
+      if (videoLoader) videoLoader.style.display = 'none';
+    };
+    modalVideo.addEventListener('playing', hideLoader, { once: true });
+    modalVideo.addEventListener('canplay', hideLoader, { once: true });
+
+    // Initial attempt: Full unmuted playback
+    modalVideo.muted = false;
+    const playPromise = modalVideo.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        hideLoader();
+        if (videoCenterPlay) videoCenterPlay.style.display = 'none';
+      }).catch(err => {
+        console.warn("Unmuted autoplay restricted by browser policy; retrying with muted autoplay:", err);
+        // Fallback: Muted playback is universally permitted across iOS, Android, and Desktop
+        modalVideo.muted = true;
+        modalVideo.play().then(() => {
+          hideLoader();
+          if (videoCenterPlay) videoCenterPlay.style.display = 'none';
+          if (videoUnmuteBtn) videoUnmuteBtn.style.display = 'flex';
+        }).catch(err2 => {
+          console.warn("Muted autoplay also blocked; showing central play button:", err2);
+          hideLoader();
+          if (videoCenterPlay) videoCenterPlay.style.display = 'flex';
+        });
+      });
+    }
+  } else if (modalIframe) {
+    modalIframe.style.display = 'block';
+    modalIframe.src = actualSrc;
+  }
 };
 
 window.closeVideoModal = function() {
   const videoModal = document.getElementById('videoModal');
   const modalVideo = document.getElementById('modalVideo');
   const modalIframe = document.getElementById('modalIframe');
+  const videoLoader = document.getElementById('videoLoader');
+  const videoUnmuteBtn = document.getElementById('videoUnmuteBtn');
+  const videoCenterPlay = document.getElementById('videoCenterPlay');
 
   if (videoModal) {
     videoModal.classList.remove('active');
@@ -131,16 +214,51 @@ window.closeVideoModal = function() {
   }
   if (modalVideo) {
     modalVideo.pause();
+    modalVideo.removeAttribute('data-active-src');
     modalVideo.removeAttribute('src');
-    modalVideo.load();
+    modalVideo.load(); // Clean up audio/video hardware pipeline
   }
   if (modalIframe) {
     modalIframe.src = "";
+  }
+  if (videoLoader) videoLoader.style.display = 'none';
+  if (videoUnmuteBtn) videoUnmuteBtn.style.display = 'none';
+  if (videoCenterPlay) videoCenterPlay.style.display = 'none';
+};
+
+window.unmuteModalVideo = function() {
+  const modalVideo = document.getElementById('modalVideo');
+  const videoUnmuteBtn = document.getElementById('videoUnmuteBtn');
+  if (modalVideo) {
+    modalVideo.muted = false;
+    modalVideo.play().catch(() => {});
+  }
+  if (videoUnmuteBtn) {
+    videoUnmuteBtn.style.display = 'none';
+  }
+};
+
+window.toggleModalVideoPlay = function() {
+  const modalVideo = document.getElementById('modalVideo');
+  const videoCenterPlay = document.getElementById('videoCenterPlay');
+  if (!modalVideo) return;
+
+  if (modalVideo.paused) {
+    modalVideo.play().then(() => {
+      if (videoCenterPlay) videoCenterPlay.style.display = 'none';
+    }).catch(err => {
+      console.warn("Toggle play failed:", err);
+    });
+  } else {
+    modalVideo.pause();
+    if (videoCenterPlay) videoCenterPlay.style.display = 'flex';
   }
 };
 
 // Helper: Attach 3D Card Tilt & In-Page Video Modal
 function setupProjectCard(card) {
+  card.style.cursor = 'pointer';
+
   card.addEventListener('mousemove', (e) => {
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -159,7 +277,7 @@ function setupProjectCard(card) {
   });
 
   const handleCardTrigger = (e) => {
-    e.preventDefault();
+    if (e && e.target && e.target.closest && e.target.closest('a')) return;
     const videoSrc = card.getAttribute('data-video-src');
     const rawDriveId = card.getAttribute('data-drive-id');
     const cleanId = extractDriveId(rawDriveId);
@@ -173,9 +291,14 @@ function setupProjectCard(card) {
     }
   };
 
-  card.addEventListener('click', handleCardTrigger);
+  // Only attach listener if card doesn't already have an inline onclick attribute
+  if (!card.getAttribute('onclick')) {
+    card.addEventListener('click', handleCardTrigger);
+  }
+
   card.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
       handleCardTrigger(e);
     }
   });
@@ -623,11 +746,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ==========================================
-  // 6. VIDEO LIGHTBOX MODAL CLOSE HANDLERS
+  // 6. VIDEO LIGHTBOX MODAL & PLAYER CONTROLS
   // ==========================================
   const videoModal = document.getElementById('videoModal');
   const modalClose = document.getElementById('modalClose');
-  const modalIframe = document.getElementById('modalIframe');
+  const modalVideo = document.getElementById('modalVideo');
+  const videoCenterPlay = document.getElementById('videoCenterPlay');
 
   if (modalClose && videoModal) {
     modalClose.addEventListener('click', () => {
@@ -638,6 +762,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (e.target === videoModal) {
         window.closeVideoModal();
       }
+    });
+  }
+
+  if (modalVideo) {
+    modalVideo.addEventListener('click', (e) => {
+      // Toggle play/pause when user clicks the video viewport
+      const rect = modalVideo.getBoundingClientRect();
+      const clickY = e.clientY - rect.top;
+      // If click is not in the bottom 46px (where native controls sit)
+      if (clickY < rect.height - 46) {
+        window.toggleModalVideoPlay();
+      }
+    });
+
+    modalVideo.addEventListener('play', () => {
+      if (videoCenterPlay) videoCenterPlay.style.display = 'none';
+      const videoLoader = document.getElementById('videoLoader');
+      if (videoLoader) videoLoader.style.display = 'none';
+    });
+
+    modalVideo.addEventListener('pause', () => {
+      if (videoModal && videoModal.classList.contains('active')) {
+        if (videoCenterPlay) videoCenterPlay.style.display = 'flex';
+      }
+    });
+
+    modalVideo.addEventListener('waiting', () => {
+      const videoLoader = document.getElementById('videoLoader');
+      if (videoLoader) videoLoader.style.display = 'flex';
+    });
+
+    modalVideo.addEventListener('canplay', () => {
+      const videoLoader = document.getElementById('videoLoader');
+      if (videoLoader) videoLoader.style.display = 'none';
     });
   }
 
@@ -699,12 +857,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // ESC key closes any open modal
+  // ESC key closes any open modal, Space toggles video play/pause
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       window.closePayModal();
       window.closeCallModal();
       window.closeVideoModal();
+    } else if (e.key === ' ' || e.code === 'Space') {
+      const vModal = document.getElementById('videoModal');
+      if (vModal && vModal.classList.contains('active')) {
+        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+          return;
+        }
+        e.preventDefault();
+        window.toggleModalVideoPlay();
+      }
     }
   });
 
@@ -1309,9 +1476,13 @@ window.updateAuthUI = function(user) {
   const menuUserEmail = document.getElementById('menuUserEmail');
 
   if (user) {
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.classList.remove('show-auth-portal');
+    }
     // 1. Hide modal gate on home/services/portfolio pages
     if (authModal) {
       authModal.classList.add('auth-hidden');
+      authModal.classList.remove('active');
       authModal.style.display = 'none';
     }
 
@@ -1375,8 +1546,19 @@ window.updateAuthUI = function(user) {
       }
     }
   } else {
-    // Logged out state - Keep portal modal closed so visitors on any mobile/desktop can freely explore the website!
-    if (authModal) {
+    // Logged out state - Automatically show login portal first on website entry
+    const isGuestBrowsing = (typeof sessionStorage !== 'undefined') && sessionStorage.getItem('ashraa_guest_browsing') === 'true';
+    if (authModal && !isGuestBrowsing) {
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.classList.add('show-auth-portal');
+      }
+      authModal.classList.remove('auth-hidden');
+      authModal.classList.add('active');
+      authModal.style.display = 'flex';
+    } else if (authModal) {
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.classList.remove('show-auth-portal');
+      }
       authModal.classList.add('auth-hidden');
       authModal.classList.remove('active');
       authModal.style.display = 'none';
@@ -1405,7 +1587,15 @@ window.updateAuthUI = function(user) {
 window.signOutUser = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.closeUserDropdown();
-  localStorage.removeItem('ashraa_auth_user');
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('ashraa_auth_user');
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('ashraa_guest_browsing');
+  }
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.classList.add('show-auth-portal');
+  }
   window.updateAuthUI(null);
 
   const authAlert = document.getElementById('authAlert');
@@ -1567,6 +1757,9 @@ window.initAuthGate = function() {
 
 // Auth Modal Open/Close Controls
 window.openAuthModal = function(view) {
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.classList.add('show-auth-portal');
+  }
   const authModal = document.getElementById('authModal');
   if (authModal) {
     if (view && typeof window.switchAuthView === 'function') {
@@ -1575,12 +1768,20 @@ window.openAuthModal = function(view) {
     authModal.classList.remove('auth-hidden');
     authModal.classList.add('active');
     authModal.style.display = 'flex';
+    const emailInput = document.getElementById('authEmail');
+    if (emailInput) setTimeout(() => emailInput.focus(), 80);
   } else {
     window.location.href = 'login.html' + (view === 'signup' ? '#signup' : '');
   }
 };
 
 window.closeAuthModal = function() {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('ashraa_guest_browsing', 'true');
+  }
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.classList.remove('show-auth-portal');
+  }
   const authModal = document.getElementById('authModal');
   if (authModal) {
     authModal.classList.add('auth-hidden');
@@ -1596,6 +1797,7 @@ window.switchAuthView = function(view) {
   window.authCurrentView = view;
   const loginForm = document.getElementById('authLoginForm');
   const forgotForm = document.getElementById('authForgotForm');
+  const nameGroup = document.getElementById('authNameGroup');
   const title = document.getElementById('authTitle');
   const subtitle = document.getElementById('authSubtitle');
   const msgBox = document.getElementById('authMsg');
@@ -1609,27 +1811,30 @@ window.switchAuthView = function(view) {
   if (view === 'forgot') {
     if (loginForm) loginForm.style.display = 'none';
     if (forgotForm) forgotForm.style.display = 'block';
+    if (nameGroup) nameGroup.style.display = 'none';
     if (toggleRow) toggleRow.style.display = 'none';
     if (title) title.textContent = 'Reset Your Password';
     if (subtitle) subtitle.textContent = 'Enter your email to receive recovery instructions:';
   } else if (view === 'signup') {
     if (loginForm) loginForm.style.display = 'block';
     if (forgotForm) forgotForm.style.display = 'none';
+    if (nameGroup) nameGroup.style.display = 'block';
     if (toggleRow) toggleRow.style.display = 'block';
     if (title) title.textContent = 'Join Creator Portal';
     if (subtitle) subtitle.textContent = 'Create an account for priority retention video editing:';
     const submitBtn = document.getElementById('authSubmitBtn');
-    if (submitBtn) submitBtn.textContent = 'Create Account &rarr;';
+    if (submitBtn) submitBtn.textContent = 'Create Account \u2192';
     const togglePrompt = document.getElementById('authTogglePrompt');
     if (togglePrompt) togglePrompt.innerHTML = `Already have an account? <button type="button" class="auth-link" onclick="switchAuthView('login')">Sign In</button>`;
   } else {
     if (loginForm) loginForm.style.display = 'block';
     if (forgotForm) forgotForm.style.display = 'none';
+    if (nameGroup) nameGroup.style.display = 'none';
     if (toggleRow) toggleRow.style.display = 'block';
     if (title) title.textContent = 'Creator & Brand Portal';
     if (subtitle) subtitle.textContent = 'Sign in to access post-production suites & client dashboard:';
     const submitBtn = document.getElementById('authSubmitBtn');
-    if (submitBtn) submitBtn.textContent = 'Sign In to Portal &rarr;';
+    if (submitBtn) submitBtn.textContent = 'Sign In to Portal \u2192';
     const togglePrompt = document.getElementById('authTogglePrompt');
     if (togglePrompt) togglePrompt.innerHTML = `Don't have an account? <button type="button" class="auth-link" onclick="switchAuthView('signup')">Sign Up</button>`;
   }
@@ -1639,12 +1844,14 @@ window.handleEmailAuth = function(e) {
   if (e) e.preventDefault();
   const emailInput = document.getElementById('authEmail');
   const passInput = document.getElementById('authPassword');
+  const nameInput = document.getElementById('authName');
   const email = emailInput ? emailInput.value.trim() : '';
   const password = passInput ? passInput.value : '';
+  const name = nameInput ? nameInput.value.trim() : '';
 
   if (window.authCurrentView === 'signup') {
     const defaultName = email.split('@')[0];
-    const formattedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+    const formattedName = name || (defaultName.charAt(0).toUpperCase() + defaultName.slice(1));
     window.signUpWithEmail(email, password, formattedName);
   } else {
     window.signInWithEmail(email, password);
@@ -1659,12 +1866,10 @@ window.handleForgotSubmit = function(e) {
 };
 
 window.handleGuestAccess = function() {
-  window.authenticateUser({
-    name: 'Guest Creator',
-    email: 'guest@ashraamedia.com',
-    provider: 'guest',
-    signedInAt: new Date().toISOString()
-  });
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('ashraa_guest_browsing', 'true');
+  }
+  window.closeAuthModal();
 };
 
 // ==========================================
