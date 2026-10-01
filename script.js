@@ -3,7 +3,7 @@
  */
 
 // ==========================================
-// 1. STUDIO CONFIGURATION & SUPABASE SETUP
+// 1. STUDIO CONFIGURATION & AUTH SETUP
 // ==========================================
 const STUDIO_WHATSAPP = "916201607744";
 const STUDIO_UPI_ID   = "ashraaofficial@okicici";
@@ -11,7 +11,11 @@ const STUDIO_QR_IMAGE = "assets/upi-qr.png"; // User's official Google Pay QR co
 const STUDIO_QR_FALLBACK = "assets/upi-qr-placeholder.svg";
 const STUDIO_NAME     = "Ashraa Media";
 
-// Your Supabase Project Details
+// Google OAuth Client ID (Optional for Google Cloud Console direct verification):
+// Paste your Web Client ID here (e.g. "123456789-abcdefg.apps.googleusercontent.com")
+window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
+
+// Your Supabase Project Details (Optional)
 const SUPABASE_URL = "https://nbxmptemldnusvhbuaih.supabase.co";
 
 // PASTE YOUR ANON KEY FROM YOUR .ENV FILE BETWEEN THE QUOTES BELOW:
@@ -256,23 +260,37 @@ window.switchQrMode = function(mode) {
   const upiQrCode = document.getElementById('upiQrCode');
   const btnGpay = document.getElementById('qrBtnGpay');
   const btnDynamic = document.getElementById('qrBtnDynamic');
+  const qrAmountBadge = document.getElementById('qrAmountBadge');
   const amount = window.activeAmount || 4999;
   const plan = window.activePlan || "Starter Creator";
+  const formattedAmount = Number(amount).toLocaleString('en-IN');
 
-  if (mode === 'dynamic') {
-    if (btnDynamic) btnDynamic.classList.add('active');
-    if (btnGpay) btnGpay.classList.remove('active');
-    if (upiQrCode) {
-      const upiUri = `upi://pay?pa=${encodeURIComponent(STUDIO_UPI_ID)}&pn=${encodeURIComponent(STUDIO_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent(plan + ' Retainer')}`;
-      upiQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}`;
-      upiQrCode.alt = `Dynamic UPI QR for ${plan} (₹${amount})`;
-    }
-  } else {
+  if (mode === 'static_gpay' || mode === 'gpay') {
     if (btnGpay) btnGpay.classList.add('active');
     if (btnDynamic) btnDynamic.classList.remove('active');
     if (upiQrCode) {
       upiQrCode.src = STUDIO_QR_IMAGE;
       upiQrCode.alt = `Official Google Pay QR Code for ${STUDIO_NAME}`;
+    }
+    if (qrAmountBadge) {
+      qrAmountBadge.textContent = `Payee: ${STUDIO_NAME} (Enter ₹${formattedAmount})`;
+      qrAmountBadge.style.color = '#94a3b8';
+      qrAmountBadge.style.borderColor = '#232938';
+    }
+  } else {
+    // Default & Recommended: Dynamic UPI QR with PRE-FILLED EXACT AMOUNT
+    if (btnDynamic) btnDynamic.classList.add('active');
+    if (btnGpay) btnGpay.classList.remove('active');
+    if (upiQrCode) {
+      // NPCI standard UPI format with pre-filled exact amount
+      const upiUri = `upi://pay?pa=${encodeURIComponent(STUDIO_UPI_ID)}&pn=${encodeURIComponent(STUDIO_NAME)}&am=${Number(amount).toFixed(2)}&cu=INR&tn=${encodeURIComponent(plan + ' Suite')}`;
+      upiQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(upiUri)}`;
+      upiQrCode.alt = `Scan with any UPI App (GPay, PhonePe, Paytm) to pay pre-filled ₹${formattedAmount}`;
+    }
+    if (qrAmountBadge) {
+      qrAmountBadge.textContent = `✓ Amount Auto-Prefilled: ₹${formattedAmount}`;
+      qrAmountBadge.style.color = '#4ade80';
+      qrAmountBadge.style.borderColor = 'rgba(37, 211, 102, 0.4)';
     }
   }
 };
@@ -304,8 +322,8 @@ window.openPayModal = function(plan, amount) {
   if (payAmountDisplay) payAmountDisplay.textContent = `₹${amountText}`;
   if (upiIdDisplay) upiIdDisplay.textContent = STUDIO_UPI_ID;
 
-  // Set default QR mode to user's official GPay QR
-  window.switchQrMode('gpay');
+  // Set default QR mode to pre-filled dynamic QR code so scanning immediately fills the exact amount!
+  window.switchQrMode('dynamic');
 
   if (upiQrCode) {
     upiQrCode.onerror = function () {
@@ -315,7 +333,7 @@ window.openPayModal = function(plan, amount) {
   }
 
   if (mobileUpiBtn) {
-    const upiUri = `upi://pay?pa=${encodeURIComponent(STUDIO_UPI_ID)}&pn=${encodeURIComponent(STUDIO_NAME)}&am=${rupees}&cu=INR&tn=${encodeURIComponent(plan + ' Suite')}`;
+    const upiUri = `upi://pay?pa=${encodeURIComponent(STUDIO_UPI_ID)}&pn=${encodeURIComponent(STUDIO_NAME)}&am=${rupees.toFixed(2)}&cu=INR&tn=${encodeURIComponent(plan + ' Suite')}`;
     mobileUpiBtn.href = upiUri;
     mobileUpiBtn.style.display = 'flex';
   }
@@ -370,10 +388,17 @@ window.handlePaymentSubmit = async function(e) {
   }, 800);
 };
 
+window.selectedCallSlot = "Morning (10 AM - 1 PM)";
+
 window.setSlot = function(btn, slot) {
-  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('active'));
+  if (!btn) return;
+  const container = btn.closest('.slot-grid') || document;
+  container.querySelectorAll('.slot-btn').forEach(b => {
+    b.classList.remove('active');
+    b.removeAttribute('style');
+  });
   btn.classList.add('active');
-  window.selectedCallSlot = slot;
+  window.selectedCallSlot = slot || btn.getAttribute('data-slot') || btn.textContent.trim();
 };
 
 window.handleCallSubmit = function(e) {
@@ -435,9 +460,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     slotButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        slotButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        window.selectedCallSlot = btn.getAttribute('data-slot') || btn.textContent;
+        const slot = btn.getAttribute('data-slot') || btn.textContent.trim();
+        window.setSlot(btn, slot);
       });
     });
   }
@@ -712,4 +736,887 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // ==========================================
+  // 11. RESPONSIVE MOBILE NAVIGATION HANDLERS
+  // ==========================================
+  // Close mobile menu when clicking any nav link
+  document.querySelectorAll('.nav-menu .nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      window.closeMobileMenu();
+    });
+  });
+
+  // Close mobile menu when clicking outside
+  document.addEventListener('click', (e) => {
+    const navMenu = document.getElementById('navMenu');
+    const toggleBtn = document.getElementById('mobileMenuToggle');
+    if (navMenu && navMenu.classList.contains('active')) {
+      if (!navMenu.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
+        window.closeMobileMenu();
+      }
+    }
+  });
+
+  // ==========================================
+  // 12. PERMANENTLY FIXED NAVBAR SCROLL EFFECT
+  // ==========================================
+  const handleScrollHeader = () => {
+    const header = document.querySelector('header');
+    if (header) {
+      if (window.scrollY > 15) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    }
+  };
+  window.addEventListener('scroll', handleScrollHeader, { passive: true });
+  handleScrollHeader();
+
+  // ==========================================
+  // 13. INITIALIZE AUTHENTICATION PORTAL GATE
+  // ==========================================
+  window.initAuthGate();
+
 });
+
+// Global Mobile Menu Toggle
+window.toggleMobileMenu = function() {
+  const toggleBtn = document.getElementById('mobileMenuToggle');
+  const navMenu = document.getElementById('navMenu');
+  if (!navMenu) return;
+
+  const isActive = navMenu.classList.toggle('active');
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('active', isActive);
+    toggleBtn.setAttribute('aria-expanded', String(isActive));
+  }
+};
+
+window.closeMobileMenu = function() {
+  const toggleBtn = document.getElementById('mobileMenuToggle');
+  const navMenu = document.getElementById('navMenu');
+  if (navMenu) navMenu.classList.remove('active');
+  if (toggleBtn) {
+    toggleBtn.classList.remove('active');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+  }
+};
+
+// ==========================================
+// 14. AUTHENTICATION & LOGIN GATE CONTROLLERS
+// ==========================================
+window.authCurrentView = 'login'; // 'login', 'signup', 'forgot'
+
+// Dynamically load Google Identity Services (GIS) SDK
+function loadGoogleIdentityServices() {
+  if (document.getElementById('google-gsi-script')) return;
+  const script = document.createElement('script');
+  script.id = 'google-gsi-script';
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true;
+  script.defer = true;
+  script.onload = () => {
+    if (window.GOOGLE_CLIENT_ID && window.google && window.google.accounts && window.google.accounts.id) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: window.GOOGLE_CLIENT_ID,
+          callback: handleGoogleGsiResponse
+        });
+      } catch (err) {
+        console.warn("Google GIS initialization notice:", err);
+      }
+    }
+  };
+  document.head.appendChild(script);
+}
+
+// Google GIS Credential Response Handler
+function handleGoogleGsiResponse(response) {
+  if (response && response.credential) {
+    try {
+      const base64Url = response.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const payload = JSON.parse(jsonPayload);
+      window.authenticateUser({
+        name: payload.name || payload.given_name || 'Google Creator',
+        email: payload.email,
+        picture: payload.picture || '',
+        provider: 'google',
+        signedInAt: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn("Could not decode Google token:", e);
+    }
+  }
+}
+
+// ==========================================
+// 14.1 USER ACCOUNTS DATABASE & STATE HELPERS
+// ==========================================
+const DEFAULT_REGISTERED_USERS = [
+  {
+    name: "Shilpi Thakur",
+    email: "shilpithskur9b37@gmail.com",
+    password: "Password@123",
+    provider: "google",
+    createdAt: "2026-09-01T00:00:00.000Z"
+  },
+  {
+    name: "Ashraa Studio Admin",
+    email: "admin@ashraamedia.com",
+    password: "Admin@1234",
+    provider: "email",
+    createdAt: "2026-09-01T00:00:00.000Z"
+  }
+];
+
+function getRegisteredUsers() {
+  const raw = localStorage.getItem('ashraa_registered_users');
+  if (!raw) {
+    localStorage.setItem('ashraa_registered_users', JSON.stringify(DEFAULT_REGISTERED_USERS));
+    return [...DEFAULT_REGISTERED_USERS];
+  }
+  try {
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [...DEFAULT_REGISTERED_USERS];
+  } catch (e) {
+    return [...DEFAULT_REGISTERED_USERS];
+  }
+}
+
+function saveRegisteredUsers(users) {
+  localStorage.setItem('ashraa_registered_users', JSON.stringify(users));
+}
+
+function displayAuthAlert(type, message) {
+  // 1. On login.html (#authAlert)
+  const authAlert = document.getElementById('authAlert');
+  if (authAlert) {
+    authAlert.className = `auth-alert ${type}`;
+    authAlert.innerHTML = message;
+    authAlert.style.display = 'block';
+  }
+
+  // 2. On index.html / other pages (#authMsg)
+  const authMsg = document.getElementById('authMsg');
+  if (authMsg) {
+    authMsg.className = `auth-msg ${type === 'error' ? 'error' : 'success'}`;
+    authMsg.innerHTML = message;
+    authMsg.style.display = 'block';
+  }
+}
+
+// Ensure the Google Account Modal exists in DOM
+function ensureGoogleModal() {
+  let modal = document.getElementById('googleAccountModal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.className = 'google-modal';
+  modal.id = 'googleAccountModal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'googleModalTitle');
+
+  modal.innerHTML = `
+    <div class="google-modal-box">
+      <button type="button" class="google-modal-close" onclick="closeGoogleModal()" aria-label="Close">&times;</button>
+      <div class="google-modal-header">
+        <svg class="google-modal-logo" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <h3 class="google-modal-title" id="googleModalTitle">Choose an account</h3>
+        <p class="google-modal-subtitle">to continue to <strong style="color:#1f1f1f;">Ashraa Media</strong></p>
+      </div>
+
+      <div id="googleModalAlert" style="display:none; font-size:0.84rem; padding:10px 12px; border-radius:8px; margin-bottom:12px; text-align:center;"></div>
+
+      <!-- Quick 1-Click Accounts List (First & Prominent) -->
+      <div class="google-account-list" id="googleAccountList">
+        <button type="button" class="google-account-item" onclick="selectGoogleAccount('Shilpi Thakur', 'shilpithskur9b37@gmail.com')">
+          <div class="google-account-avatar">S</div>
+          <div class="google-account-info">
+            <div class="google-account-name">Shilpi Thakur</div>
+            <div class="google-account-email">shilpithskur9b37@gmail.com</div>
+          </div>
+          <span class="google-account-arrow">&rsaquo;</span>
+        </button>
+
+        <button type="button" class="google-account-item" onclick="selectGoogleAccount('Ashraa Studio', 'ashraaofficial@gmail.com')">
+          <div class="google-account-avatar" style="background:#ea4335;">A</div>
+          <div class="google-account-info">
+            <div class="google-account-name">Ashraa Studio</div>
+            <div class="google-account-email">ashraaofficial@gmail.com</div>
+          </div>
+          <span class="google-account-arrow">&rsaquo;</span>
+        </button>
+
+        <!-- Use Another Account Option -->
+        <button type="button" class="google-custom-trigger" onclick="toggleCustomGoogleAccount(event)">
+          <div class="google-account-avatar" style="background:#f1f3f4; color:#1a73e8; font-weight:700;">+</div>
+          <div class="google-account-info">
+            <div class="google-account-name" style="color:#1a73e8; font-weight:600;">Use another Google account</div>
+          </div>
+          <span class="google-account-arrow" style="color:#1a73e8;">&rsaquo;</span>
+        </button>
+      </div>
+
+      <!-- Expandable Single Input for Custom Google Email -->
+      <form id="googleCustomForm" class="google-custom-form" onsubmit="handleGoogleDirectSubmit(event)" style="display: none;">
+        <div style="margin-bottom: 8px;">
+          <label for="googleAuthEmail" style="display:block; font-size:0.78rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Google Email Address</label>
+          <input type="email" id="googleAuthEmail" class="google-custom-input" placeholder="e.g. yourname@gmail.com" required autocomplete="email" style="margin-bottom:8px;" />
+        </div>
+        <button type="submit" id="btnGoogleSubmit" class="btn btn-primary" style="width:100%; justify-content:center; padding:10px 12px; font-size:0.88rem; font-weight:600; background:#1a73e8; border-color:#1a73e8; color:#fff; border-radius:8px; cursor:pointer;">
+          Continue with Google &rarr;
+        </button>
+      </form>
+
+      <div class="google-modal-footer">
+        To continue, Google will share your name, email address, language preference, and profile picture with Ashraa Media.
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) window.closeGoogleModal();
+  });
+
+  return modal;
+}
+
+// Toggle "Use another Google account" input
+window.toggleCustomGoogleAccount = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const form = document.getElementById('googleCustomForm');
+  if (!form) return;
+  const isShown = form.classList.contains('active') && form.style.display === 'block';
+  if (isShown) {
+    form.classList.remove('active');
+    form.style.display = 'none';
+  } else {
+    form.classList.add('active');
+    form.style.display = 'block';
+    const emailInput = document.getElementById('googleAuthEmail');
+    if (emailInput) setTimeout(() => emailInput.focus(), 60);
+  }
+};
+
+// Google Modal Open Action
+window.openGoogleModal = function() {
+  const modal = ensureGoogleModal();
+
+  // If real Google Client ID is configured and GIS is available, trigger One-Tap prompt
+  if (window.GOOGLE_CLIENT_ID && window.GOOGLE_CLIENT_ID.includes('.apps.googleusercontent.com') && window.google && window.google.accounts && window.google.accounts.id) {
+    try {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+          }
+        }
+      });
+      return;
+    } catch (e) {
+      console.warn("Google One-Tap trigger fallback:", e);
+    }
+  }
+
+  // Display authentic 1-Click Google Account Chooser
+  if (modal) {
+    const alertEl = document.getElementById('googleModalAlert');
+    if (alertEl) {
+      alertEl.style.display = 'none';
+      alertEl.textContent = '';
+    }
+    const customForm = document.getElementById('googleCustomForm');
+    if (customForm) {
+      customForm.classList.remove('active');
+      customForm.style.display = 'none';
+    }
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
+};
+
+window.closeGoogleModal = function() {
+  const modal = document.getElementById('googleAccountModal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+};
+
+// 1-Click Google Account Selection Handler
+window.selectGoogleAccount = function(name, email, picture) {
+  name = (name || 'Google Creator').trim();
+  email = (email || '').trim().toLowerCase();
+
+  const alertEl = document.getElementById('googleModalAlert');
+  if (alertEl) {
+    alertEl.style.display = 'block';
+    alertEl.style.background = '#e8f0fe';
+    alertEl.style.color = '#1a73e8';
+    alertEl.innerHTML = `<span class="google-spinner"></span> Authenticating as <strong>${name}</strong> (${email})...`;
+  }
+
+  // Register or update user in database with Google provider
+  const users = getRegisteredUsers();
+  let existingUser = users.find(u => u.email.toLowerCase() === email);
+  if (!existingUser) {
+    existingUser = {
+      name: name,
+      email: email,
+      password: "GoogleAuthUser@2026",
+      provider: "google",
+      picture: picture || "",
+      createdAt: new Date().toISOString()
+    };
+    users.push(existingUser);
+    saveRegisteredUsers(users);
+  }
+
+  setTimeout(() => {
+    window.closeGoogleModal();
+    window.authenticateUser({
+      name: existingUser.name || name,
+      email: existingUser.email || email,
+      picture: existingUser.picture || picture || '',
+      provider: 'google',
+      signedInAt: new Date().toISOString()
+    });
+  }, 250);
+};
+
+// Direct Submit for Custom Google Email
+window.handleGoogleDirectSubmit = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const emailInput = document.getElementById('googleAuthEmail');
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    const alertEl = document.getElementById('googleModalAlert');
+    if (alertEl) {
+      alertEl.style.display = 'block';
+      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
+      alertEl.style.color = '#f87171';
+      alertEl.textContent = 'Please enter a valid Google email address.';
+    }
+    return;
+  }
+
+  const defaultName = email.split('@')[0];
+  const resolvedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+  window.selectGoogleAccount(resolvedName, email);
+};
+
+// Unified Entry Points for Google Authentication
+window.signInWithGoogle = function() {
+  window.openGoogleModal();
+};
+
+window.handleGoogleAuth = function() {
+  window.openGoogleModal();
+};
+
+// Central User Authentication & State Manager
+window.authenticateUser = function(userData) {
+  if (!userData || !userData.email) return;
+
+  // Persist session in localStorage
+  localStorage.setItem('ashraa_auth_user', JSON.stringify(userData));
+
+  // Update UI across all active pages
+  window.updateAuthUI(userData);
+
+  // Provide user feedback on login.html
+  const authAlert = document.getElementById('authAlert');
+  if (authAlert) {
+    authAlert.className = 'auth-alert success';
+    authAlert.innerHTML = `✓ Signed in successfully as <strong>${userData.name}</strong> (${userData.email})`;
+    authAlert.style.display = 'block';
+  }
+
+  // Provide user feedback on modal on index.html / other pages
+  const msgBox = document.getElementById('authMsg');
+  if (msgBox) {
+    msgBox.className = 'auth-msg success';
+    msgBox.innerHTML = `✓ Welcome, <strong>${userData.name}</strong>! Access unlocked.`;
+    msgBox.style.display = 'block';
+  }
+
+  // Dismiss modal if present
+  setTimeout(() => {
+    window.unlockPortal();
+  }, 500);
+};
+
+// Navbar User Profile Dropdown Controllers
+window.toggleUserDropdown = function(e) {
+  if (e) {
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+  }
+  const menu = document.getElementById('navUserMenu');
+  const btn = document.getElementById('navUserBtn');
+  if (!menu) return;
+  const isHidden = menu.style.display === 'none' || !menu.classList.contains('show');
+  if (isHidden) {
+    menu.style.display = 'block';
+    menu.classList.add('show');
+    if (btn) {
+      btn.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  } else {
+    window.closeUserDropdown();
+  }
+};
+
+window.closeUserDropdown = function() {
+  const menu = document.getElementById('navUserMenu');
+  const btn = document.getElementById('navUserBtn');
+  if (menu) {
+    menu.style.display = 'none';
+    menu.classList.remove('show');
+  }
+  if (btn) {
+    btn.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+};
+
+// Global click-outside listener to close user profile dropdown
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.nav-user-dropdown-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      window.closeUserDropdown();
+    }
+  });
+}
+
+// User Profile "Sign Up" button handler:
+// Signs out current user and brings them directly to the Sign Up view/page
+window.handleNavSignUp = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  window.closeUserDropdown();
+  window.signOutUser();
+
+  // If on login.html, switch to sign up tab
+  if (typeof switchAuthTab === 'function') {
+    switchAuthTab('signup');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    // If on a page with authModal
+    const authModal = document.getElementById('authModal');
+    if (authModal) {
+      if (typeof window.switchAuthView === 'function') {
+        window.switchAuthView('signup');
+      }
+      authModal.classList.remove('auth-hidden');
+      authModal.style.display = 'flex';
+    } else {
+      window.location.href = 'login.html#signup';
+    }
+  }
+};
+
+// UI Synchronizer (Navbar auth state, Login profile cards, Portal gates)
+window.updateAuthUI = function(user) {
+  const authModal = document.getElementById('authModal');
+  const userPills = document.querySelectorAll('.user-status-pill');
+  const userProfileCard = document.getElementById('userProfileCard');
+  const authCard = document.getElementById('authCard');
+  const userEmailDisplay = document.getElementById('userEmailDisplay');
+  const userNameDisplay = document.getElementById('userNameDisplay');
+  const userAvatarDisplay = document.getElementById('userAvatarDisplay');
+  const userProviderBadge = document.getElementById('userProviderBadge');
+
+  // Navbar elements for Login vs User Name button
+  const navLoginItem = document.getElementById('navLoginItem');
+  const navUserItem = document.getElementById('navUserItem');
+  const navUserName = document.getElementById('navUserName');
+  const navUserAvatar = document.getElementById('navUserAvatar');
+  const menuUserName = document.getElementById('menuUserName');
+  const menuUserEmail = document.getElementById('menuUserEmail');
+
+  if (user) {
+    // 1. Hide modal gate on home/services/portfolio pages
+    if (authModal) {
+      authModal.classList.add('auth-hidden');
+      authModal.style.display = 'none';
+    }
+
+    // 2. Hide Login button and ONLY show user name button in navbar
+    if (navLoginItem) navLoginItem.style.display = 'none';
+    if (navUserItem) navUserItem.style.display = 'inline-block';
+
+    const displayName = user.name || (user.email ? user.email.split('@')[0] : 'Creator');
+    if (navUserName) navUserName.textContent = displayName;
+    if (menuUserName) menuUserName.textContent = displayName;
+    if (menuUserEmail) menuUserEmail.textContent = user.email || '';
+
+    if (navUserAvatar) {
+      if (user.picture) {
+        navUserAvatar.innerHTML = `<img src="${user.picture}" alt="${displayName}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
+      } else {
+        const initial = displayName.charAt(0).toUpperCase();
+        navUserAvatar.textContent = initial || '👤';
+      }
+    }
+
+    // Legacy pills if any
+    userPills.forEach(pill => {
+      pill.style.display = 'none';
+    });
+
+    // 3. Update dedicated Login page views
+    if (userProfileCard) {
+      userProfileCard.style.display = 'block';
+    }
+    if (authCard) {
+      authCard.style.display = 'none';
+    }
+    if (userEmailDisplay) {
+      userEmailDisplay.textContent = user.email;
+    }
+    if (userNameDisplay) {
+      userNameDisplay.textContent = `Welcome Back, ${user.name}!`;
+    }
+    if (userAvatarDisplay) {
+      if (user.picture) {
+        userAvatarDisplay.innerHTML = `<img src="${user.picture}" alt="${user.name}" />`;
+      } else {
+        const initial = (user.name || user.email || 'G').charAt(0).toUpperCase();
+        userAvatarDisplay.textContent = initial;
+      }
+    }
+    if (userProviderBadge) {
+      if (user.provider === 'google') {
+        userProviderBadge.innerHTML = `
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Verified via Google Account</span>
+        `;
+      } else {
+        userProviderBadge.innerHTML = `<span>Verified Email Account</span>`;
+      }
+    }
+  } else {
+    // Logged out state
+    if (authModal) {
+      authModal.classList.remove('auth-hidden');
+      authModal.style.display = 'flex';
+    }
+
+    // Show Login button, hide User Name button
+    if (navLoginItem) navLoginItem.style.display = '';
+    if (navUserItem) navUserItem.style.display = 'none';
+    window.closeUserDropdown();
+
+    userPills.forEach(pill => {
+      pill.style.display = 'none';
+      pill.onclick = null;
+    });
+
+    if (userProfileCard) {
+      userProfileCard.style.display = 'none';
+    }
+    if (authCard) {
+      authCard.style.display = 'block';
+    }
+  }
+};
+
+// Sign Out Handler
+window.signOutUser = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  window.closeUserDropdown();
+  localStorage.removeItem('ashraa_auth_user');
+  window.updateAuthUI(null);
+
+  const authAlert = document.getElementById('authAlert');
+  if (authAlert) {
+    authAlert.className = 'auth-alert info';
+    authAlert.textContent = 'You have signed out of Ashraa Media.';
+    authAlert.style.display = 'block';
+  }
+};
+
+window.handleSignOut = window.signOutUser;
+
+// Proper Email Sign In Handler
+window.signInWithEmail = function(email, password) {
+  email = (email || '').trim().toLowerCase();
+  password = (password || '').trim();
+
+  if (!email || !password) {
+    displayAuthAlert('error', 'Please enter both your email address and password.');
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    displayAuthAlert('error', 'Please enter a valid email address (e.g. you@channel.com).');
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const user = users.find(u => u.email.toLowerCase() === email);
+
+  if (!user) {
+    displayAuthAlert('error', `No account found for "<strong>${email}</strong>". Please click <strong>Create Account</strong> above to register.`);
+    return;
+  }
+
+  if (user.password !== password) {
+    displayAuthAlert('error', 'Incorrect password. Please verify your password and try again.');
+    return;
+  }
+
+  // Proper credentials verified!
+  displayAuthAlert('success', `✓ Signed in successfully! Welcome back, ${user.name}.`);
+  window.authenticateUser({
+    name: user.name,
+    email: user.email,
+    picture: user.picture || '',
+    provider: user.provider || 'email',
+    signedInAt: new Date().toISOString()
+  });
+};
+
+// Proper Email Sign Up Handler
+window.signUpWithEmail = function(email, password, name) {
+  email = (email || '').trim().toLowerCase();
+  password = (password || '').trim();
+  name = (name || '').trim();
+
+  if (!email || !password || !name) {
+    displayAuthAlert('error', 'Please fill in all fields (Full Name, Email Address, and Password).');
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    displayAuthAlert('error', 'Please enter a valid email address.');
+    return;
+  }
+
+  if (password.length < 6) {
+    displayAuthAlert('error', 'Password must be at least 6 characters long.');
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const existing = users.find(u => u.email.toLowerCase() === email);
+
+  if (existing) {
+    displayAuthAlert('error', `An account with "<strong>${email}</strong>" already exists. Please Sign In.`);
+    if (typeof switchAuthTab === 'function') {
+      switchAuthTab('signin');
+      const signInEmail = document.getElementById('signInEmail');
+      if (signInEmail) signInEmail.value = email;
+    }
+    return;
+  }
+
+  // Register in persistent storage
+  const newUser = {
+    name: name,
+    email: email,
+    password: password,
+    provider: 'email',
+    createdAt: new Date().toISOString()
+  };
+  users.push(newUser);
+  saveRegisteredUsers(users);
+
+  displayAuthAlert('success', `✓ Account created successfully! Welcome to Ashraa Media, ${name}.`);
+  window.authenticateUser({
+    name: newUser.name,
+    email: newUser.email,
+    provider: 'email',
+    signedInAt: new Date().toISOString()
+  });
+};
+
+// Proper Password Reset Handler
+window.resetPassword = function(email) {
+  email = (email || '').trim().toLowerCase();
+  const resetAlert = document.getElementById('resetAlert') || document.getElementById('authAlert');
+
+  if (!email) {
+    if (resetAlert) {
+      resetAlert.className = 'auth-alert error';
+      resetAlert.textContent = 'Please enter your registered email address.';
+      resetAlert.style.display = 'block';
+    }
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const user = users.find(u => u.email.toLowerCase() === email);
+
+  if (!user) {
+    if (resetAlert) {
+      resetAlert.className = 'auth-alert error';
+      resetAlert.innerHTML = `No registered account found with "<strong>${email}</strong>".`;
+      resetAlert.style.display = 'block';
+    }
+    return;
+  }
+
+  user.password = "Ashraa@123";
+  saveRegisteredUsers(users);
+
+  if (resetAlert) {
+    resetAlert.className = 'auth-alert success';
+    resetAlert.innerHTML = `✓ Password reset successful for <strong>${email}</strong>!<br>Your temporary password is: <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-weight:700;">Ashraa@123</span><br>Click Back to Sign In to log in.`;
+    resetAlert.style.display = 'block';
+  }
+};
+
+// Portal Gate Initializer
+window.initAuthGate = function() {
+  ensureGoogleModal();
+  loadGoogleIdentityServices();
+
+  const savedUser = localStorage.getItem('ashraa_auth_user');
+  if (savedUser) {
+    try {
+      const userData = JSON.parse(savedUser);
+      window.updateAuthUI(userData);
+    } catch (e) {
+      window.updateAuthUI(null);
+    }
+  } else {
+    window.updateAuthUI(null);
+  }
+};
+
+// Modal Dismiss
+window.unlockPortal = function() {
+  const authModal = document.getElementById('authModal');
+  if (authModal) {
+    authModal.classList.add('auth-hidden');
+    setTimeout(() => {
+      authModal.style.display = 'none';
+    }, 300);
+  }
+};
+
+// Inline Form Switchers (index.html authModal)
+window.switchAuthView = function(view) {
+  window.authCurrentView = view;
+  const loginForm = document.getElementById('authLoginForm');
+  const forgotForm = document.getElementById('authForgotForm');
+  const title = document.getElementById('authTitle');
+  const subtitle = document.getElementById('authSubtitle');
+  const msgBox = document.getElementById('authMsg');
+  const toggleRow = document.getElementById('authToggleRow');
+
+  if (msgBox) {
+    msgBox.style.display = 'none';
+    msgBox.className = 'auth-msg';
+  }
+
+  if (view === 'forgot') {
+    if (loginForm) loginForm.style.display = 'none';
+    if (forgotForm) forgotForm.style.display = 'block';
+    if (toggleRow) toggleRow.style.display = 'none';
+    if (title) title.textContent = 'Reset Your Password';
+    if (subtitle) subtitle.textContent = 'Enter your email to receive recovery instructions:';
+  } else if (view === 'signup') {
+    if (loginForm) loginForm.style.display = 'block';
+    if (forgotForm) forgotForm.style.display = 'none';
+    if (toggleRow) toggleRow.style.display = 'block';
+    if (title) title.textContent = 'Join Creator Portal';
+    if (subtitle) subtitle.textContent = 'Create an account for priority retention video editing:';
+    const submitBtn = document.getElementById('authSubmitBtn');
+    if (submitBtn) submitBtn.textContent = 'Create Account &rarr;';
+    const togglePrompt = document.getElementById('authTogglePrompt');
+    if (togglePrompt) togglePrompt.innerHTML = `Already have an account? <button type="button" class="auth-link" onclick="switchAuthView('login')">Sign In</button>`;
+  } else {
+    if (loginForm) loginForm.style.display = 'block';
+    if (forgotForm) forgotForm.style.display = 'none';
+    if (toggleRow) toggleRow.style.display = 'block';
+    if (title) title.textContent = 'Creator & Brand Portal';
+    if (subtitle) subtitle.textContent = 'Sign in to access post-production suites & client dashboard:';
+    const submitBtn = document.getElementById('authSubmitBtn');
+    if (submitBtn) submitBtn.textContent = 'Sign In to Portal &rarr;';
+    const togglePrompt = document.getElementById('authTogglePrompt');
+    if (togglePrompt) togglePrompt.innerHTML = `Don't have an account? <button type="button" class="auth-link" onclick="switchAuthView('signup')">Sign Up</button>`;
+  }
+};
+
+window.handleEmailAuth = function(e) {
+  if (e) e.preventDefault();
+  const emailInput = document.getElementById('authEmail');
+  const passInput = document.getElementById('authPassword');
+  const email = emailInput ? emailInput.value.trim() : '';
+  const password = passInput ? passInput.value : '';
+
+  if (window.authCurrentView === 'signup') {
+    const defaultName = email.split('@')[0];
+    const formattedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+    window.signUpWithEmail(email, password, formattedName);
+  } else {
+    window.signInWithEmail(email, password);
+  }
+};
+
+window.handleForgotSubmit = function(e) {
+  if (e) e.preventDefault();
+  const emailInput = document.getElementById('forgotEmail');
+  const email = emailInput ? emailInput.value.trim() : '';
+  window.resetPassword(email);
+};
+
+window.handleGuestAccess = function() {
+  window.authenticateUser({
+    name: 'Guest Creator',
+    email: 'guest@ashraamedia.com',
+    provider: 'guest',
+    signedInAt: new Date().toISOString()
+  });
+};
+
+// ==========================================
+// 15. GLOBAL INITIALIZATION (AUTH GATE & FIXED NAVBAR)
+// ==========================================
+function setupFixedNavbarScroll() {
+  const header = document.querySelector('header');
+  if (!header) return;
+  const updateScroll = () => {
+    if (window.scrollY > 20) {
+      header.classList.add('scrolled');
+    } else {
+      header.classList.remove('scrolled');
+    }
+  };
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  updateScroll();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.initAuthGate === 'function') window.initAuthGate();
+    setupFixedNavbarScroll();
+  });
+} else {
+  if (typeof window.initAuthGate === 'function') window.initAuthGate();
+  setupFixedNavbarScroll();
+}

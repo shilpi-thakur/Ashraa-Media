@@ -11,11 +11,89 @@
 
   <div class="ambient-mesh"></div>
 
+  <!-- Initial Authentication Portal Modal (Google / Email / Forgot Password) -->
+  <div id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-box">
+      <div class="auth-header">
+        <div class="auth-brand-wrap">
+          <img src="assets/logo.png" alt="Ashraa Media" class="auth-brand-logo">
+        </div>
+        <h3 id="authTitle">Creator & Brand Portal</h3>
+        <p id="authSubtitle">Sign in to access post-production suites & client dashboard:</p>
+      </div>
+
+      <div id="authMsg" class="auth-msg"></div>
+
+      <!-- 1. Google OAuth Button -->
+      <button type="button" class="btn-google-auth" onclick="handleGoogleAuth()">
+        <svg viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Continue with Google</span>
+      </button>
+
+      <div class="auth-divider">
+        <span>or sign in with email</span>
+      </div>
+
+      <!-- 2. Email & Password Login Form -->
+      <form id="authLoginForm" onsubmit="handleEmailAuth(event)">
+        <div class="form-group" style="margin-bottom: 0.9rem;">
+          <label for="authEmail" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Email Address</label>
+          <input type="email" id="authEmail" required placeholder="creator@brand.com" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.6rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label for="authPassword" style="font-size:0.8rem; color:#94a3b8; margin:0;">Password</label>
+            <button type="button" class="auth-link" onclick="switchAuthView('forgot')">Forgot password?</button>
+          </div>
+          <input type="password" id="authPassword" required placeholder="••••••••" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
+        </div>
+
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px; font-weight:700; margin-top:0.8rem;">
+          Sign In to Portal &rarr;
+        </button>
+      </form>
+
+      <!-- 3. Forgot Password Form -->
+      <form id="authForgotForm" onsubmit="handleForgotSubmit(event)" style="display: none;">
+        <div class="form-group" style="margin-bottom: 1.2rem;">
+          <label for="forgotEmail" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Registered Email Address</label>
+          <input type="email" id="forgotEmail" required placeholder="Enter your email to receive reset instructions" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px; font-weight:700;">
+          Send Reset Instructions &rarr;
+        </button>
+
+        <div style="text-align: center; margin-top: 1rem;">
+          <button type="button" class="auth-link" onclick="switchAuthView('login')">&larr; Back to Sign In</button>
+        </div>
+      </form>
+
+      <!-- Toggle Sign In / Sign Up -->
+      <div id="authToggleRow" class="auth-toggle-text">
+        <span id="authTogglePrompt">Don't have an account? <button type="button" class="auth-link" onclick="switchAuthView('signup')">Sign Up</button></span>
+      </div>
+
+      <!-- Explore as Guest Button -->
+      <button type="button" class="auth-guest-btn" onclick="handleGuestAccess()">
+        Continue & Explore as Guest &rarr;
+      </button>
+    </div>
+  </div>
+
   <!-- Header -->
   <header>
     <div class="container nav-wrapper">
-      <a href="index.html" class="brand">Ashraa Media</a>
-      <nav>
+      <a href="index.html" class="brand" aria-label="Ashraa Media">
+        <img src="assets/logo.png" alt="Ashraa Media" class="brand-logo">
+      </a>
+      <nav class="nav-menu" id="navMenu">
         <ul class="nav-links">
           <li><a href="index.html" class="nav-link">Home</a></li>
           <li><a href="services.html" class="nav-link">Services</a></li>
@@ -23,36 +101,74 @@
           <li><a href="pricing.html" class="nav-link active">Pricing</a></li>
           <li><a href="about.html" class="nav-link">About</a></li>
           <li><a href="contact.html" class="nav-link">Contact</a></li>
+          <li class="nav-item-auth" id="navLoginItem"><a href="login.html" class="nav-link nav-link-login" id="navLoginLink">Login</a></li>
+          <li class="nav-item-user" id="navUserItem" style="display: none;">
+            <div class="nav-user-dropdown-wrap">
+              <button type="button" class="nav-user-btn" id="navUserBtn" onclick="toggleUserDropdown(event)" aria-label="User Profile Menu" aria-expanded="false">
+                <span class="nav-user-avatar" id="navUserAvatar">👤</span>
+                <span class="nav-user-name" id="navUserName">Creator</span>
+                <svg class="nav-user-caret" viewBox="0 0 20 20" width="12" height="12">
+                  <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                </svg>
+              </button>
+              <div class="nav-user-menu" id="navUserMenu" style="display: none;">
+                <div class="nav-user-menu-header">
+                  <span class="nav-user-badge">Signed In</span>
+                  <div class="nav-user-menu-name" id="menuUserName">Creator</div>
+                  <div class="nav-user-menu-email" id="menuUserEmail">creator@brand.com</div>
+                </div>
+                <div class="nav-user-menu-divider"></div>
+                <div class="nav-user-actions">
+                  <button type="button" class="user-dropdown-btn btn-sign-out" onclick="signOutUser(event)">
+                    <svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M16 17v-3H9v-4h7V7l5 5-5 5M14 2a2 2 0 0 1 2 2v3h-2V4H5v16h9v-3h2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9z"/></svg>
+                    <span>Sign Out</span>
+                  </button>
+                  <button type="button" class="user-dropdown-btn btn-sign-up" onclick="handleNavSignUp(event)">
+                    <svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <span>Sign Up</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </li>
         </ul>
       </nav>
 
-      <button class="btn-call" onclick="openCallModal()">
-        <svg viewBox="0 0 24 24"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.59l2.2-2.21a1 1 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2a9 9 0 0 0-9-9v2a7 7 0 0 1 7 7z"/></svg>
-        Book 20-Min Call
-      </button>
+      <div class="nav-actions">
+        <!-- Mobile Hamburger Button -->
+        <button class="mobile-toggle-btn" id="mobileMenuToggle" aria-label="Toggle Navigation Menu" aria-expanded="false" onclick="toggleMobileMenu()">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </button>
+      </div>
     </div>
   </header>
 
   <main class="container page-content">
     <div class="section-head">
-      <span class="section-label">Transparent Rates</span>
-      <h1>Choose Your Package</h1>
-      <p>Select your package and click "Pay Now" to open the interactive UPI & QR payment modal.</p>
+      <span class="section-label">Transparent Rates & Retainers</span>
+      <h1>Choose Your Post-Production Suite</h1>
+      <p>Fixed transparent monthly packages. Instant UPI & QR checkouts with verified WhatsApp onboarding.</p>
     </div>
 
     <div class="pricing-grid">
       <!-- Starter -->
       <div class="pricing-card">
-        <h4>Starter Creator</h4>
-        <p style="color: var(--text-muted); font-size: 0.88rem;">Ideal for consistent social presence.</p>
-        <div class="price-amount">₹4,999</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="font-size: 1.25rem;">Starter Creator</h4>
+          <span class="tag-chip">Social Presence</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">Ideal for building consistent short-form algorithmic momentum.</p>
+        <div class="price-amount">₹4,999<span style="font-size: 0.95rem; font-weight: 500; color: var(--text-muted);"> / month</span></div>
         <ul>
-          <li>✓ 8 Short-form Reels / Shorts</li>
-          <li>✓ 48h Delivery Turnaround</li>
-          <li>✓ Kinetic Subtitles & Sound FX</li>
-          <li>✓ 2 Revisions per video</li>
+          <li>✓ <strong>8 Short-form Reels / Shorts</strong> (9:16)</li>
+          <li>✓ <strong>48h Turnaround</strong> per video</li>
+          <li>✓ Kinetic Subtitles & Audio Sound FX</li>
+          <li>✓ 2 Revisions per deliverable</li>
+          <li>✓ 1080p / 4K MP4 Master Deliverables</li>
         </ul>
-        <button class="btn btn-secondary pay-trigger-btn" data-plan="Starter Creator" data-amount="4999" onclick="openPayModal('Starter Creator', 4999)">
+        <button class="btn btn-secondary pay-trigger-btn" data-plan="Starter Creator" data-amount="4999" onclick="openPayModal('Starter Creator', 4999)" style="width: 100%; justify-content: center; font-weight: 700;">
           Pay ₹4,999 Now &rarr;
         </button>
       </div>
@@ -60,37 +176,60 @@
       <!-- Growth -->
       <div class="pricing-card featured">
         <span class="featured-badge">Most Popular</span>
-        <h4>Brand Growth</h4>
-        <p style="color: var(--text-muted); font-size: 0.88rem;">Complete monthly video production.</p>
-        <div class="price-amount">₹9,999</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="font-size: 1.25rem; color: #fff;">Brand Growth</h4>
+          <span class="tag-chip" style="background: rgba(99, 102, 241, 0.2); color: #c7d2fe;">Full Omnichannel</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">Complete monthly video production for active personal brands & channels.</p>
+        <div class="price-amount" style="color: #fff;">₹9,999<span style="font-size: 0.95rem; font-weight: 500; color: #a5b4fc;"> / month</span></div>
         <ul>
-          <li>✓ 16 Short-form Reels/Shorts</li>
-          <li>✓ 2 Long-form YouTube Edits</li>
-          <li>✓ Priority 24h Delivery</li>
-          <li>✓ Motion Graphics & DaVinci Grade</li>
-          <li>✓ Unlimited Revisions</li>
+          <li>✓ <strong>16 Short-form Reels / Shorts</strong> (9:16)</li>
+          <li>✓ <strong>2 Long-form YouTube Edits</strong> (16:9)</li>
+          <li>✓ <strong>Priority 24h Delivery</strong> turnaround</li>
+          <li>✓ Advanced DaVinci Color Science & Motion FX</li>
+          <li>✓ <strong>Unlimited Revisions</strong> until 100% satisfied</li>
+          <li>✓ Direct WhatsApp Slack Sync</li>
         </ul>
-        <button class="btn btn-primary pay-trigger-btn" data-plan="Brand Growth" data-amount="9999" onclick="openPayModal('Brand Growth', 9999)">
+        <button class="btn btn-primary pay-trigger-btn" data-plan="Brand Growth" data-amount="9999" onclick="openPayModal('Brand Growth', 9999)" style="width: 100%; justify-content: center; font-weight: 700;">
           Pay ₹9,999 Now &rarr;
         </button>
       </div>
 
       <!-- Scale -->
       <div class="pricing-card">
-        <h4>Agency Scale</h4>
-        <p style="color: var(--text-muted); font-size: 0.88rem;">For high-volume channels & businesses.</p>
-        <div class="price-amount">₹19,999</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="font-size: 1.25rem;">Agency Scale</h4>
+          <span class="tag-chip">High Volume</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">For high-volume media houses, businesses & multi-creator pods.</p>
+        <div class="price-amount">₹19,999<span style="font-size: 0.95rem; font-weight: 500; color: var(--text-muted);"> / month</span></div>
         <ul>
-          <li>✓ 30+ Video Edits / Month</li>
-          <li>✓ Dedicated Lead Video Editor</li>
-          <li>✓ Custom Thumbnails & Packaging</li>
-          <li>✓ Direct WhatsApp Slack Channel</li>
+          <li>✓ <strong>30+ High-Retention Video Edits</strong></li>
+          <li>✓ <strong>Dedicated Lead Video Editor</strong></li>
+          <li>✓ Custom YouTube Packaging & Thumbnails</li>
+          <li>✓ Raw B-roll Archiving & Cloud Storage</li>
+          <li>✓ Priority Daily Pipeline Delivery</li>
+          <li>✓ Private Retainer Communication Channel</li>
         </ul>
-        <button class="btn btn-secondary pay-trigger-btn" data-plan="Agency Scale" data-amount="19999" onclick="openPayModal('Agency Scale', 19999)">
+        <button class="btn btn-secondary pay-trigger-btn" data-plan="Agency Scale" data-amount="19999" onclick="openPayModal('Agency Scale', 19999)" style="width: 100%; justify-content: center; font-weight: 700;">
           Pay ₹19,999 Now &rarr;
         </button>
       </div>
     </div>
+
+    <!-- Custom Retainer Callout -->
+    <section class="call-banner-container" style="margin-top: 4.5rem;">
+      <div class="call-card">
+        <div class="call-card-info">
+          <span class="section-label" style="margin-bottom: 4px;">Custom Volume</span>
+          <h3>Need a Tailored Retainer or Commercial Suite?</h3>
+          <p>Book a free 20-minute strategy call to discuss custom footage volume, multi-camera edits, and bespoke workflows.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openCallModal()" style="white-space: nowrap;">
+          Book 20-Min Strategy Call &rarr;
+        </button>
+      </div>
+    </section>
   </main>
 
   <!-- 1. PAYMENT MODAL -->
@@ -109,13 +248,16 @@
         <div id="payAmountDisplay" class="pay-amount-hero">₹0</div>
       </div>
 
+      <!-- Amount Auto-Prefill Highlight Badge -->
+      <div class="qr-amount-pill" id="qrAmountBadge">⚡ Amount Auto-Prefilled: ₹0</div>
+
       <!-- QR Code Mode Switcher -->
       <div class="qr-toggle-group">
-        <button type="button" class="qr-toggle-btn active" id="qrBtnGpay" onclick="switchQrMode('gpay')">
-          Official GPay QR
+        <button type="button" class="qr-toggle-btn active" id="qrBtnDynamic" onclick="switchQrMode('dynamic')">
+          ⚡ Auto-Prefilled Amount QR
         </button>
-        <button type="button" class="qr-toggle-btn" id="qrBtnDynamic" onclick="switchQrMode('dynamic')">
-          Prefilled Amount QR
+        <button type="button" class="qr-toggle-btn" id="qrBtnGpay" onclick="switchQrMode('static_gpay')">
+          Direct Merchant QR
         </button>
       </div>
 
@@ -204,9 +346,9 @@
         <div class="form-group">
           <label>Preferred Time Window</label>
           <div class="slot-grid">
-            <button type="button" class="slot-btn active" data-slot="Morning (10 AM - 1 PM)">10 AM - 1 PM</button>
-            <button type="button" class="slot-btn" data-slot="Afternoon (2 PM - 5 PM)">2 PM - 5 PM</button>
-            <button type="button" class="slot-btn" data-slot="Evening (6 PM - 9 PM)">6 PM - 9 PM</button>
+            <button type="button" class="slot-btn active" data-slot="Morning (10 AM - 1 PM)" onclick="setSlot(this, 'Morning (10 AM - 1 PM)')">10 AM - 1 PM</button>
+            <button type="button" class="slot-btn" data-slot="Afternoon (2 PM - 5 PM)" onclick="setSlot(this, 'Afternoon (2 PM - 5 PM)')">2 PM - 5 PM</button>
+            <button type="button" class="slot-btn" data-slot="Evening (6 PM - 9 PM)" onclick="setSlot(this, 'Evening (6 PM - 9 PM)')">6 PM - 9 PM</button>
           </div>
         </div>
 
@@ -226,8 +368,78 @@
       </form>
     </div>
   </div>
-  <footer>
-    <p>&copy; 2026 Ashraa Media. All rights reserved.</p>
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <!-- Brand & Vision Column -->
+      <div class="footer-col footer-col-brand">
+        <a href="index.html" class="brand footer-brand" aria-label="Ashraa Media">
+          <img src="assets/logo.png" alt="Ashraa Media" class="footer-logo">
+        </a>
+        <p class="footer-desc">
+          High-retention video post-production studio turning raw footage into exponential audience growth for creators, founders, and modern brands.
+        </p>
+        <div class="footer-status">
+          <span class="status-dot"></span>
+          <span>Accepting Select Commissions</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Navigation</h4>
+        <ul class="footer-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="services.html">Services</a></li>
+          <li><a href="portfolio.html">Portfolio</a></li>
+          <li><a href="pricing.html">Pricing</a></li>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact</a></li>
+          <li><a href="login.html">Login</a></li>
+        </ul>
+      </div>
+
+      <!-- Creative Capabilities -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Post-Production</h4>
+        <ul class="footer-links">
+          <li><a href="services.html">Short-Form Reels (9:16)</a></li>
+          <li><a href="services.html">YouTube Documentaries (16:9)</a></li>
+          <li><a href="services.html">Kinetic Typography & Hooks</a></li>
+          <li><a href="services.html">DaVinci Color Science</a></li>
+          <li><a href="services.html">Master Audio & Soundscapes</a></li>
+        </ul>
+      </div>
+
+      <!-- Direct Booking & Contact -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Direct Inquiry</h4>
+        <p class="footer-subtext">Have raw footage ready to edit? Jump directly into a creative discussion:</p>
+        <div class="footer-ctas">
+          <button class="btn btn-primary btn-footer-call call-trigger" onclick="openCallModal()">
+            <svg viewBox="0 0 24 24"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.59l2.2-2.21a1 1 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2a9 9 0 0 0-9-9v2a7 7 0 0 1 7 7z"/></svg>
+            Book 20-Min Call
+          </button>
+          <a href="https://wa.me/916201607744?text=Hi%20Ashraa%20Media,%20I'd%20like%20to%20discuss%20a%20project." class="footer-wa-link" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.13.82.84-3.05-.2-.32a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.21 8.23z"/></svg>
+            <span>WhatsApp: +91 62016 07744</span>
+          </a>
+        </div>
+        <div class="footer-pill-row">
+          <span class="footer-pill">⚡ 24–48h Delivery</span>
+          <span class="footer-pill">4K UHD Master</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <p>&copy; 2026 Ashraa Media. All rights reserved.</p>
+        <div class="footer-bottom-badge">
+          <span>Engineered for Retention & Audience Scale</span>
+        </div>
+      </div>
+    </div>
   </footer>
 
   <a href="https://wa.me/916201607744?text=Hi%20Ashraa%20Media,%20I'm%20inquiring%20about%20your%20pricing." 
@@ -240,6 +452,6 @@
     Chat on WhatsApp
   </a>
 
-  <script src="script.js?v=2"></script>
+  <script src="script.js"></script>
 </body>
 </html>

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Client Portal | Ashraa Media</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- Ambient Light & Mesh -->
+  <div class="ambient-mesh"></div>
+
+  <!-- Fixed Clean Navigation Bar -->
+  <header>
+    <div class="container nav-wrapper">
+      <a href="index.html" class="brand" aria-label="Ashraa Media">
+        <img src="assets/logo.png" alt="Ashraa Media" class="brand-logo">
+      </a>
+      
+      <nav class="nav-menu" id="navMenu">
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link">Home</a></li>
+          <li><a href="services.html" class="nav-link">Services</a></li>
+          <li><a href="portfolio.html" class="nav-link">Portfolio</a></li>
+          <li><a href="pricing.html" class="nav-link">Pricing</a></li>
+          <li><a href="about.html" class="nav-link">About</a></li>
+          <li><a href="contact.html" class="nav-link">Contact</a></li>
+          <li class="nav-item-auth" id="navLoginItem"><a href="login.html" class="nav-link nav-link-login active" id="navLoginLink">Login</a></li>
+          <li class="nav-item-user" id="navUserItem" style="display: none;">
+            <div class="nav-user-dropdown-wrap">
+              <button type="button" class="nav-user-btn" id="navUserBtn" onclick="toggleUserDropdown(event)" aria-label="User Profile Menu" aria-expanded="false">
+                <span class="nav-user-avatar" id="navUserAvatar">👤</span>
+                <span class="nav-user-name" id="navUserName">Creator</span>
+                <svg class="nav-user-caret" viewBox="0 0 20 20" width="12" height="12">
+                  <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                </svg>
+              </button>
+              <div class="nav-user-menu" id="navUserMenu" style="display: none;">
+                <div class="nav-user-menu-header">
+                  <span class="nav-user-badge">Signed In</span>
+                  <div class="nav-user-menu-name" id="menuUserName">Creator</div>
+                  <div class="nav-user-menu-email" id="menuUserEmail">creator@brand.com</div>
+                </div>
+                <div class="nav-user-menu-divider"></div>
+                <div class="nav-user-actions">
+                  <button type="button" class="user-dropdown-btn btn-sign-out" onclick="signOutUser(event)">
+                    <svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M16 17v-3H9v-4h7V7l5 5-5 5M14 2a2 2 0 0 1 2 2v3h-2V4H5v16h9v-3h2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9z"/></svg>
+                    <span>Sign Out</span>
+                  </button>
+                  <button type="button" class="user-dropdown-btn btn-sign-up" onclick="handleNavSignUp(event)">
+                    <svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <span>Sign Up</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- Mobile Hamburger Button -->
+        <button class="mobile-toggle-btn" id="mobileMenuToggle" aria-label="Toggle Navigation Menu" aria-expanded="false" onclick="toggleMobileMenu()">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="auth-page-section">
+    <!-- Active Logged In View -->
+    <div class="auth-card" id="userProfileCard" style="display: none; text-align: center;">
+      <div class="auth-card-header">
+        <div class="user-avatar-circle" id="userAvatarDisplay">G</div>
+        <h2 id="userNameDisplay">Welcome Back!</h2>
+        <p>You are signed in to Ashraa Media as</p>
+        <div id="userEmailDisplay" style="font-weight: 700; color: #a5b4fc; margin-top: 6px; font-size: 1.05rem;"></div>
+        <div id="userProviderBadge" class="user-provider-badge">
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Verified via Google Account</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
+        <a href="index.html" class="btn btn-primary" style="justify-content: center;">
+          Go to Studio Homepage &rarr;
+        </a>
+        <button type="button" class="btn btn-secondary" onclick="signOutUser()" style="justify-content: center; color: #f87171; border-color: rgba(239, 68, 68, 0.3);">
+          Sign Out
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Auth Card -->
+    <div class="auth-card" id="authCard">
+      <!-- Standard Login / Signup View -->
+      <div id="authMainView">
+        <div class="auth-card-header">
+          <div class="auth-brand-wrap" style="margin-bottom: 1rem;">
+            <img src="assets/logo.png" alt="Ashraa Media" class="auth-brand-logo">
+          </div>
+          <span class="section-label" style="margin-bottom: 4px;">Client & Creator Portal</span>
+          <h2>Access Your Studio</h2>
+          <p>Sign in to manage your editing retainers, deliveries, and creative briefs.</p>
+        </div>
+
+        <!-- Auth Tabs: Sign In vs Sign Up -->
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" id="tabSignIn" onclick="switchAuthTab('signin')">Sign In</button>
+          <button type="button" class="auth-tab" id="tabSignUp" onclick="switchAuthTab('signup')">Create Account</button>
+        </div>
+
+        <!-- Alert Notification Box -->
+        <div class="auth-alert" id="authAlert"></div>
+
+        <!-- 1. Google OAuth Button -->
+        <button type="button" class="btn-google" onclick="signInWithGoogle()">
+          <svg viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        <div class="auth-divider">
+          <span>or continue with email</span>
+        </div>
+
+        <!-- 2. Sign In Form -->
+        <form id="signInForm" onsubmit="handleEmailSignIn(event)">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="signInEmail">Email Address</label>
+            <input type="email" id="signInEmail" required placeholder="you@channel.com" autocomplete="username" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:11px 14px; border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.8rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label for="signInPassword" style="margin-bottom: 0;">Password</label>
+              <a href="#" class="auth-link" onclick="toggleForgotView(true, event)" style="font-size: 0.8rem;">Forgot Password?</a>
+            </div>
+            <input type="password" id="signInPassword" required placeholder="Enter your password" autocomplete="current-password" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:11px 14px; border-radius:8px;">
+          </div>
+
+          <button type="submit" id="btnSignIn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; margin-top: 1rem;">
+            Sign In &rarr;
+          </button>
+        </form>
+
+        <!-- 3. Sign Up Form -->
+        <form id="signUpForm" style="display: none;" onsubmit="handleEmailSignUp(event)">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="signUpName">Full Name or Channel Name</label>
+            <input type="text" id="signUpName" required placeholder="e.g. Julian / Atelier Media" autocomplete="name" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:11px 14px; border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="signUpEmail">Email Address</label>
+            <input type="email" id="signUpEmail" required placeholder="you@channel.com" autocomplete="email" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:11px 14px; border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.8rem;">
+            <label for="signUpPassword">Create Password (Min 6 characters)</label>
+            <input type="password" id="signUpPassword" required minlength="6" placeholder="Create a secure password" autocomplete="new-password" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:11px 14px; border-radius:8px;">
+          </div>
+
+          <button type="submit" id="btnSignUp" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; margin-top: 1rem;">
+            Create Account &rarr;
+          </button>
+        </form>
+      </div>
+
+      <!-- 4. Forgot Password View -->
+      <div id="forgotPasswordView" style="display: none;">
+        <div class="auth-card-header">
+          <span class="section-label" style="margin-bottom: 4px;">Account Recovery</span>
+          <h2>Reset Password</h2>
+          <p>Enter your registered email address and we'll send you secure password reset instructions.</p>
+        </div>
+
+        <div class="auth-alert" id="resetAlert"></div>
+
+        <form id="forgotPasswordForm" onsubmit="handleForgotPasswordSubmit(event)">
+          <div class="form-group" style="margin-bottom: 1.2rem;">
+            <label for="forgotEmail">Your Registered Email</label>
+            <input type="email" id="forgotEmail" required placeholder="you@channel.com" autocomplete="email" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:11px 14px; border-radius:8px;">
+          </div>
+
+          <button type="submit" id="btnSendReset" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;">
+            Send Password Reset Link &rarr;
+          </button>
+
+          <div style="text-align: center; margin-top: 1.5rem;">
+            <a href="#" class="auth-link" onclick="toggleForgotView(false, event)">
+              &larr; Back to Sign In
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- 20-Minute Strategy Call Popup Modal -->
+  <div class="modal" id="callModal">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.4rem;">
+        <div>
+          <span class="section-label" style="font-size: 0.7rem; margin-bottom: 2px;">Private Consultation</span>
+          <h3 style="font-size: 1.4rem; font-weight: 700; color: #fff;">20-Min Strategy Call</h3>
+        </div>
+        <button class="modal-close" onclick="closeCallModal()">&times;</button>
+      </div>
+
+      <form id="callForm" onsubmit="handleCallSubmit(event)">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Your Name or Brand</label>
+          <input type="text" id="callerName" required placeholder="e.g. Julian / Atelier Media" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Preferred Date</label>
+          <input type="date" id="callDate" required style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Preferred Time Window</label>
+          <div class="slot-grid">
+            <button type="button" class="slot-btn active" data-slot="Morning (10 AM - 1 PM)" onclick="setSlot(this, 'Morning (10 AM - 1 PM)')">10 AM - 1 PM</button>
+            <button type="button" class="slot-btn" data-slot="Afternoon (2 PM - 5 PM)" onclick="setSlot(this, 'Afternoon (2 PM - 5 PM)')">2 PM - 5 PM</button>
+            <button type="button" class="slot-btn" data-slot="Evening (6 PM - 9 PM)" onclick="setSlot(this, 'Evening (6 PM - 9 PM)')">6 PM - 9 PM</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.2rem;">
+          <label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Discussion Focus Area</label>
+          <select id="callTopic" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:6px;">
+            <option value="Short-Form / Reels Retention Direction">Short-Form / Reels Retention Direction</option>
+            <option value="YouTube Long-Form / Documentary Pacing">YouTube Long-Form / Documentary Pacing</option>
+            <option value="Commercial Campaign & Look Development">Commercial Campaign & Look Development</option>
+            <option value="Monthly Private Retainer Suite">Monthly Private Retainer Suite</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;">
+          Confirm 20-Min Session &rarr;
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modern Site Footer -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <!-- Brand & Vision Column -->
+      <div class="footer-col footer-col-brand">
+        <a href="index.html" class="brand footer-brand" aria-label="Ashraa Media">
+          <img src="assets/logo.png" alt="Ashraa Media" class="footer-logo">
+        </a>
+        <p class="footer-desc">
+          High-retention video post-production studio turning raw footage into exponential audience growth for creators, founders, and modern brands.
+        </p>
+        <div class="footer-status">
+          <span class="status-dot"></span>
+          <span>Accepting Select Commissions</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Navigation</h4>
+        <ul class="footer-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="services.html">Services</a></li>
+          <li><a href="portfolio.html">Portfolio</a></li>
+          <li><a href="pricing.html">Pricing</a></li>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact</a></li>
+          <li><a href="login.html">Login</a></li>
+        </ul>
+      </div>
+
+      <!-- Creative Capabilities -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Post-Production</h4>
+        <ul class="footer-links">
+          <li><a href="services.html">Short-Form Reels (9:16)</a></li>
+          <li><a href="services.html">YouTube Documentaries (16:9)</a></li>
+          <li><a href="services.html">Kinetic Typography & Hooks</a></li>
+          <li><a href="services.html">DaVinci Color Science</a></li>
+          <li><a href="services.html">Master Audio & Soundscapes</a></li>
+        </ul>
+      </div>
+
+      <!-- Direct Booking & Contact -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Direct Inquiry</h4>
+        <p class="footer-subtext">Have raw footage ready to edit? Jump directly into a creative discussion:</p>
+        <div class="footer-ctas">
+          <button class="btn btn-primary btn-footer-call call-trigger" onclick="openCallModal()">
+            <svg viewBox="0 0 24 24"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.59l2.2-2.21a1 1 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2a9 9 0 0 0-9-9v2a7 7 0 0 1 7 7z"/></svg>
+            Book 20-Min Call
+          </button>
+          <a href="https://wa.me/916201607744?text=Hi%20Ashraa%20Media,%20I'd%20like%20to%20discuss%20a%20project." class="footer-wa-link" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.13.82.84-3.05-.2-.32a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.21 8.23z"/></svg>
+            <span>WhatsApp: +91 62016 07744</span>
+          </a>
+        </div>
+        <div class="footer-pill-row">
+          <span class="footer-pill">⚡ 24–48h Delivery</span>
+          <span class="footer-pill">4K UHD Master</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <p>&copy; 2026 Ashraa Media. All rights reserved.</p>
+        <div class="footer-bottom-badge">
+          <span>Engineered for Retention & Audience Scale</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating WhatsApp Button -->
+  <a href="https://wa.me/916201607744?text=Hi%20Ashraa%20Media,%20I'm%20reaching%20out%20from%20your%20login%20page." 
+     class="whatsapp-fab" 
+     target="_blank" 
+     rel="noopener noreferrer">
+    <svg viewBox="0 0 24 24">
+      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.13.82.84-3.05-.2-.32a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.21 8.23z"/>
+    </svg>
+    Chat on WhatsApp
+  </a>
+
+  <!-- Tab and View Switcher Logic -->
+  <script>
+    function switchAuthTab(tab) {
+      const tabSignIn = document.getElementById('tabSignIn');
+      const tabSignUp = document.getElementById('tabSignUp');
+      const signInForm = document.getElementById('signInForm');
+      const signUpForm = document.getElementById('signUpForm');
+      const alertEl = document.getElementById('authAlert');
+      if (alertEl) alertEl.style.display = 'none';
+
+      if (tab === 'signup') {
+        tabSignUp.classList.add('active');
+        tabSignIn.classList.remove('active');
+        signUpForm.style.display = 'block';
+        signInForm.style.display = 'none';
+      } else {
+        tabSignIn.classList.add('active');
+        tabSignUp.classList.remove('active');
+        signInForm.style.display = 'block';
+        signUpForm.style.display = 'none';
+      }
+    }
+
+    function toggleForgotView(show, e) {
+      if (e) e.preventDefault();
+      const mainView = document.getElementById('authMainView');
+      const forgotView = document.getElementById('forgotPasswordView');
+      const alertEl = document.getElementById('resetAlert');
+      if (alertEl) alertEl.style.display = 'none';
+
+      if (show) {
+        mainView.style.display = 'none';
+        forgotView.style.display = 'block';
+      } else {
+        forgotView.style.display = 'none';
+        mainView.style.display = 'block';
+      }
+    }
+
+    function handleEmailSignIn(e) {
+      e.preventDefault();
+      const email = document.getElementById('signInEmail').value.trim();
+      const password = document.getElementById('signInPassword').value;
+      if (window.signInWithEmail) {
+        window.signInWithEmail(email, password);
+      }
+    }
+
+    function handleEmailSignUp(e) {
+      e.preventDefault();
+      const name = document.getElementById('signUpName').value.trim();
+      const email = document.getElementById('signUpEmail').value.trim();
+      const password = document.getElementById('signUpPassword').value;
+      if (window.signUpWithEmail) {
+        window.signUpWithEmail(email, password, name);
+      }
+    }
+
+    function handleForgotPasswordSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('forgotEmail').value.trim();
+      if (window.resetPassword) {
+        window.resetPassword(email);
+      }
+    }
+
+    // Auto-switch to Sign Up tab if opened with #signup hash
+    if (window.location.hash === '#signup') {
+      switchAuthTab('signup');
+    }
+
+    function signInWithGoogle() {
+      if (typeof window.openGoogleModal === 'function') {
+        window.openGoogleModal();
+      } else if (typeof window.signInWithGoogle === 'function') {
+        window.signInWithGoogle();
+      } else {
+        setTimeout(() => {
+          if (typeof window.openGoogleModal === 'function') {
+            window.openGoogleModal();
+          } else if (typeof window.selectGoogleAccount === 'function') {
+            window.selectGoogleAccount('Shilpi Thakur', 'shilpithskur9b37@gmail.com');
+          }
+        }, 50);
+      }
+    }
+  </script>
+
+  <script src="script.js"></script>
+</body>
+</html>
