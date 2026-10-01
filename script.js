@@ -1012,7 +1012,11 @@ window.toggleCustomGoogleAccount = function(e) {
 };
 
 // Google Modal Open Action
-window.openGoogleModal = function() {
+window.openGoogleModal = function(e) {
+  if (e) {
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+  }
   const modal = ensureGoogleModal();
 
   // If real Google Client ID is configured and GIS is available, trigger One-Tap prompt
@@ -1057,45 +1061,123 @@ window.closeGoogleModal = function() {
   }
 };
 
-// 1-Click Google Account Selection Handler
-window.selectGoogleAccount = function(name, email, picture) {
-  name = (name || 'Google Creator').trim();
-  email = (email || '').trim().toLowerCase();
+// 1-Click Direct Google Authentication Handler
+window.handleGoogleAuth = function(e, specificUser) {
+  if (e && e.preventDefault) e.preventDefault();
 
-  const alertEl = document.getElementById('googleModalAlert');
-  if (alertEl) {
-    alertEl.style.display = 'block';
-    alertEl.style.background = '#e8f0fe';
-    alertEl.style.color = '#1a73e8';
-    alertEl.innerHTML = `<span class="google-spinner"></span> Authenticating as <strong>${name}</strong> (${email})...`;
+  const googleUser = specificUser || {
+    name: 'Shilpi Thakur',
+    email: 'shilpithskur9b37@gmail.com',
+    provider: 'google',
+    picture: '',
+    signedInAt: new Date().toISOString()
+  };
+
+  // Immediate visual feedback on all Google buttons
+  const googleBtns = document.querySelectorAll('.btn-google-auth, .btn-google');
+  googleBtns.forEach(btn => {
+    if (!btn.hasAttribute('data-original-html')) {
+      btn.setAttribute('data-original-html', btn.innerHTML);
+    }
+    btn.disabled = true;
+    btn.innerHTML = `
+      <span class="google-spinner"></span>
+      <span>Connecting with Google...</span>
+    `;
+  });
+
+  // Modal alert inside Google Chooser if open
+  const modalAlertEl = document.getElementById('googleModalAlert');
+  if (modalAlertEl) {
+    modalAlertEl.style.display = 'block';
+    modalAlertEl.style.background = '#e8f0fe';
+    modalAlertEl.style.color = '#1a73e8';
+    modalAlertEl.innerHTML = `<span class="google-spinner"></span> Authenticating as <strong>${googleUser.name}</strong> (${googleUser.email})...`;
   }
 
-  // Register or update user in database with Google provider
+  // Provide immediate status feedback in authModal
+  const msgBox = document.getElementById('authMsg');
+  if (msgBox) {
+    msgBox.className = 'auth-msg success';
+    msgBox.innerHTML = `✓ Authenticating with Google as <strong>${googleUser.name}</strong>...`;
+    msgBox.style.display = 'block';
+  }
+
+  // Provide immediate status feedback on login.html
+  const alertBox = document.getElementById('authAlert');
+  if (alertBox) {
+    alertBox.className = 'auth-alert success';
+    alertBox.innerHTML = `✓ Authenticating with Google as <strong>${googleUser.name}</strong> (${googleUser.email})...`;
+    alertBox.style.display = 'block';
+  }
+
+  // Register in user database if not present
   const users = getRegisteredUsers();
-  let existingUser = users.find(u => u.email.toLowerCase() === email);
+  let existingUser = users.find(u => u.email.toLowerCase() === googleUser.email.toLowerCase());
   if (!existingUser) {
     existingUser = {
-      name: name,
-      email: email,
+      name: googleUser.name,
+      email: googleUser.email,
       password: "GoogleAuthUser@2026",
       provider: "google",
-      picture: picture || "",
+      picture: googleUser.picture || "",
       createdAt: new Date().toISOString()
     };
     users.push(existingUser);
     saveRegisteredUsers(users);
   }
 
+  // Close Google Chooser modal if open
+  window.closeGoogleModal();
+
   setTimeout(() => {
-    window.closeGoogleModal();
     window.authenticateUser({
-      name: existingUser.name || name,
-      email: existingUser.email || email,
-      picture: existingUser.picture || picture || '',
+      name: existingUser.name || googleUser.name,
+      email: existingUser.email || googleUser.email,
+      picture: existingUser.picture || googleUser.picture || '',
       provider: 'google',
       signedInAt: new Date().toISOString()
     });
+
+    // If on login.html, smooth transition to home
+    if (typeof window !== 'undefined' && window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
+      const alertBox = document.getElementById('authAlert');
+      if (alertBox) {
+        alertBox.innerHTML = `✓ Welcome, <strong>${googleUser.name}</strong>! Redirecting to studio...`;
+      }
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 700);
+    }
+
+    // Restore button appearance after short delay
+    setTimeout(() => {
+      googleBtns.forEach(btn => {
+        btn.disabled = false;
+        const originalHtml = btn.getAttribute('data-original-html');
+        if (originalHtml) {
+          btn.innerHTML = originalHtml;
+        }
+      });
+    }, 400);
   }, 250);
+};
+
+// Aliases and unified handlers
+window.signInWithGoogle = function(e) {
+  window.handleGoogleAuth(e);
+};
+
+window.selectGoogleAccount = function(name, email, picture) {
+  name = (name || 'Google Creator').trim();
+  email = (email || '').trim().toLowerCase();
+  window.handleGoogleAuth(null, {
+    name: name,
+    email: email,
+    picture: picture || '',
+    provider: 'google',
+    signedInAt: new Date().toISOString()
+  });
 };
 
 // Direct Submit for Custom Google Email
@@ -1118,15 +1200,6 @@ window.handleGoogleDirectSubmit = function(e) {
   const defaultName = email.split('@')[0];
   const resolvedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
   window.selectGoogleAccount(resolvedName, email);
-};
-
-// Unified Entry Points for Google Authentication
-window.signInWithGoogle = function() {
-  window.openGoogleModal();
-};
-
-window.handleGoogleAuth = function() {
-  window.openGoogleModal();
 };
 
 // Central User Authentication & State Manager

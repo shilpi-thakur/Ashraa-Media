@@ -2321,7 +2321,7 @@ input, select, textarea {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 1000000;
+  z-index: 10000000;
   padding: 1.25rem;
   animation: fadeIn 0.2s ease-out;
 }
@@ -2522,4 +2522,10 @@ input, select, textarea {
   animation: spin 0.8s linear infinite;
   vertical-align: middle;
   margin-right: 6px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
