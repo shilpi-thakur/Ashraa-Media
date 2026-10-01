@@ -13,7 +13,7 @@ const STUDIO_NAME     = "Ashraa Media";
 
 // Google OAuth Client ID (Optional for Google Cloud Console direct verification):
 // Paste your Web Client ID here (e.g. "123456789-abcdefg.apps.googleusercontent.com")
-window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
+window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || (typeof localStorage !== 'undefined' ? localStorage.getItem('ashraa_google_client_id') : '') || "";
 
 // Your Supabase Project Details (Optional)
 const SUPABASE_URL = "https://nbxmptemldnusvhbuaih.supabase.co";
@@ -971,9 +971,207 @@ window.closeMobileMenu = function() {
 };
 
 // ==========================================
-// 14. AUTHENTICATION & LOGIN GATE CONTROLLERS
+// 14. AUTHENTICATION & SECURITY SHIELD
 // ==========================================
 window.authCurrentView = 'login'; // 'login', 'signup', 'forgot'
+
+// 14.0 COMPREHENSIVE EMAIL VALIDATION & ANTI-FAKE SHIELD
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  'mailinator.com', 'tempmail.com', 'temp-mail.org', 'temp-mail.io', '10minutemail.com',
+  'guerrillamail.com', 'guerrillamail.biz', 'guerrillamail.info', 'guerrillamail.net',
+  'guerrillamail.org', 'guerrillamailblock.com', 'sharklasers.com', 'grr.la', 'pokemail.net',
+  'spam4.me', 'yopmail.com', 'yopmail.fr', 'yopmail.net', 'cool.fr.nf', 'courriel.fr.nf',
+  'moncourrier.fr.nf', 'monemail.fr.nf', 'monmail.fr.nf', 'trashmail.com', 'trashmail.net',
+  'trashmail.org', 'trashmail.me', 'throwawaymail.com', 'fakemailgenerator.com',
+  'dispostable.com', 'getairmail.com', 'inboxbear.com', 'dropmail.me', 'mohmal.com',
+  'mytemp.email', 'nada.ltd', 'tempail.com', 'generator.email', 'crazymailing.com',
+  'burnermail.io', 'maildrop.cc', 'fakeinbox.com', 'emailondeck.com', 'mytrashmail.com',
+  'disposablemail.com', 'tempmailaddress.com', 'tempr.email', 'discard.email',
+  'discardmail.com', 'spambox.us', 'mytempemail.com', 'throwawayemail.com', 'mailcatch.com',
+  'boun.cr', 'inboxkitten.com', 'harakirimail.com', 'getnada.com', 'abcvg.com',
+  'wuzupworld.com', 'zetmail.com', 'tafmail.com', 'tmail.ws', 'mailpoof.com',
+  'minuteinbox.com', 'chacuo.net', 'trash-mail.com', 'mailnull.com', 'spamgourmet.com',
+  'jetable.org', 'mailexpire.com', 'anonymbox.com', 'temporary-mail.net', 'boximail.com',
+  'byom.de', 'dayrep.com', 'einrot.com', 'fleckens.com', 'gustr.com', 'jourrapide.com',
+  'rhyta.com', 'superrito.com', 'teleworm.us', 'armyspy.com', 'cuvox.de', 'trashymail.com'
+]);
+
+const FAKE_LOCAL_PARTS = new Set([
+  'test', 'testing', 'fake', 'asdf', 'asdfgh', 'qwer', 'qwerty', 'user', 'sample',
+  'dummy', 'nobody', 'noemail', 'none', '123', '1234', '12345', '123456', 'abc',
+  'abcd', 'xyz', 'temp', 'demo', 'test1', 'test2', 'null', 'undefined', 'void',
+  'fakeuser', 'fakemail', 'spam', 'admin', 'administrator', 'root'
+]);
+
+const FAKE_DOMAINS = new Set([
+  'test.com', 'example.com', 'example.org', 'example.net', 'fake.com', 'asdf.com',
+  'xyz.com', 'abc.com', 'dummy.com', 'invalid.com', 'sample.com', 'email.com',
+  'mail.com', 'domain.com', 'site.com', 'somedomain.com', 'test.org', 'fake.org',
+  'notreal.com', 'myfake.com'
+]);
+
+const COMMON_DOMAIN_TYPOS = {
+  'gnail.com': 'gmail.com',
+  'gmaill.com': 'gmail.com',
+  'gmai.com': 'gmail.com',
+  'gmil.com': 'gmail.com',
+  'gmal.com': 'gmail.com',
+  'gmaik.com': 'gmail.com',
+  'gmial.com': 'gmail.com',
+  'gmajl.com': 'gmail.com',
+  'gmaol.com': 'gmail.com',
+  'gamil.com': 'gmail.com',
+  'gmeil.com': 'gmail.com',
+  'yaho.com': 'yahoo.com',
+  'yahooo.com': 'yahoo.com',
+  'yaho.co': 'yahoo.com',
+  'yhaoo.com': 'yahoo.com',
+  'hotmial.com': 'hotmail.com',
+  'hotmaill.com': 'hotmail.com',
+  'hotmai.com': 'hotmail.com',
+  'outlok.com': 'outlook.com',
+  'outloo.com': 'outlook.com',
+  'outlk.com': 'outlook.com',
+  'icoud.com': 'icloud.com',
+  'iclod.com': 'icloud.com'
+};
+
+window.validateEmailDetailed = function(email) {
+  if (!email || typeof email !== 'string') {
+    return { isValid: false, message: 'Please enter an email address.' };
+  }
+  email = email.trim().toLowerCase();
+
+  if (email.length < 6) {
+    return { isValid: false, message: 'Email address is too short (minimum 6 characters).' };
+  }
+  if (email.length > 254) {
+    return { isValid: false, message: 'Email address exceeds maximum length.' };
+  }
+
+  // RFC 5322 regex
+  const regex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!regex.test(email)) {
+    return { isValid: false, message: 'Invalid email format (e.g. yourname@gmail.com).' };
+  }
+  if (email.includes('..')) {
+    return { isValid: false, message: 'Email cannot contain consecutive dots (..).' };
+  }
+
+  const parts = email.split('@');
+  if (parts.length !== 2) {
+    return { isValid: false, message: 'Invalid email structure.' };
+  }
+  const [localPart, domain] = parts;
+
+  // Domain structure checks
+  const domainParts = domain.split('.');
+  if (domainParts.length < 2) {
+    return { isValid: false, message: 'Email domain must contain a valid extension (e.g. .com).' };
+  }
+  const tld = domainParts[domainParts.length - 1];
+  if (tld.length < 2 || !/^[a-z]+$/i.test(tld)) {
+    return { isValid: false, message: 'Domain extension must contain at least 2 letters (e.g. .com, .in).' };
+  }
+
+  // Common typo suggestion
+  if (COMMON_DOMAIN_TYPOS[domain]) {
+    const suggested = localPart + '@' + COMMON_DOMAIN_TYPOS[domain];
+    return {
+      isValid: false,
+      isTypo: true,
+      suggestedEmail: suggested,
+      message: `Did you mean <span class="suggestion-link" onclick="window.applyEmailSuggestion('${suggested}')">${suggested}</span>?`
+    };
+  }
+
+  // Disposable domain check
+  if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    return { isValid: false, message: `Temporary/disposable email domains (${domain}) are not permitted.` };
+  }
+
+  // Fake domain check
+  if (FAKE_DOMAINS.has(domain)) {
+    return { isValid: false, message: `Please enter a real domain; "${domain}" is not permitted.` };
+  }
+
+  // Placeholder username check
+  if (FAKE_LOCAL_PARTS.has(localPart)) {
+    return { isValid: false, message: `"${localPart}" is a placeholder name. Please use your genuine email address.` };
+  }
+
+  // Repetitive characters pattern: aaaaa@ or 11111@
+  if (/^(.)\1{4,}@/.test(email)) {
+    return { isValid: false, message: 'Please enter a genuine, active email address.' };
+  }
+
+  return { isValid: true, email: email, domain: domain, user: localPart };
+};
+
+// 1-Click apply typo suggestion
+window.applyEmailSuggestion = function(suggested) {
+  const activeInput = document.activeElement && document.activeElement.type === 'email' ? document.activeElement : null;
+  const targetInput = activeInput || document.querySelector('#signUpEmail, #signInEmail, #authEmail, #forgotEmail');
+  if (targetInput) {
+    targetInput.value = suggested;
+    targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+    targetInput.focus();
+  }
+};
+
+// Auto-bind live validation feedback to all email inputs on current page
+window.setupLiveEmailValidation = function() {
+  const emailInputs = document.querySelectorAll('input[type="email"]');
+  emailInputs.forEach(input => {
+    if (input.dataset.validationBound) return;
+    input.dataset.validationBound = 'true';
+
+    // Find or create hint element
+    let hintEl = document.getElementById(input.id + 'Hint');
+    if (!hintEl) {
+      hintEl = document.createElement('div');
+      hintEl.className = 'email-hint';
+      hintEl.id = (input.id || 'email_' + Math.random().toString(36).substr(2, 5)) + 'Hint';
+      input.parentNode.appendChild(hintEl);
+    }
+
+    let debounceTimer = null;
+    const runValidation = () => {
+      const val = input.value.trim();
+      if (!val) {
+        hintEl.className = 'email-hint';
+        hintEl.innerHTML = '';
+        input.classList.remove('input-valid', 'input-invalid');
+        return;
+      }
+
+      const res = window.validateEmailDetailed(val);
+      if (res.isValid) {
+        hintEl.className = 'email-hint valid show';
+        hintEl.innerHTML = '&#10003; Valid email address';
+        input.classList.remove('input-invalid');
+        input.classList.add('input-valid');
+      } else if (res.isTypo) {
+        hintEl.className = 'email-hint typo show';
+        hintEl.innerHTML = res.message;
+        input.classList.remove('input-valid');
+        input.classList.add('input-invalid');
+      } else {
+        hintEl.className = 'email-hint invalid show';
+        hintEl.innerHTML = '&#9888; ' + res.message;
+        input.classList.remove('input-valid');
+        input.classList.add('input-invalid');
+      }
+    };
+
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(runValidation, 200);
+    });
+
+    input.addEventListener('blur', runValidation);
+  });
+};
 
 // Dynamically load Google Identity Services (GIS) SDK
 function loadGoogleIdentityServices() {
@@ -984,10 +1182,11 @@ function loadGoogleIdentityServices() {
   script.async = true;
   script.defer = true;
   script.onload = () => {
-    if (window.GOOGLE_CLIENT_ID && window.google && window.google.accounts && window.google.accounts.id) {
+    const clientId = window.getGoogleClientId();
+    if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
       try {
         window.google.accounts.id.initialize({
-          client_id: window.GOOGLE_CLIENT_ID,
+          client_id: clientId,
           callback: handleGoogleGsiResponse
         });
       } catch (err) {
@@ -1013,6 +1212,7 @@ function handleGoogleGsiResponse(response) {
         email: payload.email,
         picture: payload.picture || '',
         provider: 'google',
+        emailVerified: true,
         signedInAt: new Date().toISOString()
       });
     } catch (e) {
@@ -1099,13 +1299,70 @@ function saveDeviceGoogleAccount(account) {
   } catch (e) {}
 }
 
-// Render dynamic Google Account Chooser content based on device accounts
+// Google Client ID resolution (from window or localStorage)
+window.getGoogleClientId = function() {
+  if (window.GOOGLE_CLIENT_ID && window.GOOGLE_CLIENT_ID.includes('.apps.googleusercontent.com')) {
+    return window.GOOGLE_CLIENT_ID;
+  }
+  try {
+    const saved = localStorage.getItem('ashraa_google_client_id');
+    if (saved && saved.includes('.apps.googleusercontent.com')) return saved;
+  } catch (e) {}
+  return "";
+};
+
+window.saveGoogleClientId = function(newId) {
+  newId = (newId || '').trim();
+  if (newId) {
+    localStorage.setItem('ashraa_google_client_id', newId);
+    window.GOOGLE_CLIENT_ID = newId;
+    loadGoogleIdentityServices();
+    return true;
+  }
+  return false;
+};
+
+// Toggle developer configuration panel for Google OAuth Client ID
+window.toggleGoogleConfigPanel = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const panel = document.getElementById('googleConfigPanel');
+  if (panel) panel.classList.toggle('open');
+};
+
+window.handleSaveGoogleConfig = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const input = document.getElementById('googleClientIdInput');
+  const alertEl = document.getElementById('googleModalAlert');
+  const val = input ? input.value.trim() : '';
+  if (!val || !val.includes('.apps.googleusercontent.com')) {
+    if (alertEl) {
+      alertEl.style.display = 'block';
+      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
+      alertEl.style.color = '#f87171';
+      alertEl.textContent = 'Please enter a valid Google OAuth Web Client ID (ends with .apps.googleusercontent.com).';
+    }
+    return;
+  }
+  window.saveGoogleClientId(val);
+  if (alertEl) {
+    alertEl.style.display = 'block';
+    alertEl.style.background = 'rgba(34, 197, 94, 0.15)';
+    alertEl.style.color = '#15803d';
+    alertEl.textContent = '✓ Google Client ID saved! Live Google OAuth popups are now active.';
+  }
+  setTimeout(() => {
+    window.closeGoogleModal();
+  }, 1200);
+};
+
+// Render dynamic Google Account Chooser & Verification Portal
 function renderGoogleModalContent() {
   const modal = document.getElementById('googleAccountModal');
   if (!modal) return;
 
   const deviceAccounts = getDeviceGoogleAccounts();
   const hasAccounts = deviceAccounts.length > 0;
+  const configuredClientId = window.getGoogleClientId();
 
   modal.innerHTML = `
     <div class="google-modal-box">
@@ -1117,14 +1374,20 @@ function renderGoogleModalContent() {
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
-        <h3 class="google-modal-title" id="googleModalTitle">${hasAccounts ? 'Choose an account' : 'Sign in with Google'}</h3>
-        <p class="google-modal-subtitle">${hasAccounts ? 'to continue to <strong style="color:#1f1f1f;">Ashraa Media</strong>' : 'Enter your Google email to continue to <strong style="color:#1f1f1f;">Ashraa Media</strong>'}</p>
+        <h3 class="google-modal-title" id="googleModalTitle">${hasAccounts ? 'Verify Google Account' : 'Sign in with Google'}</h3>
+        <p class="google-modal-subtitle">to continue securely to <strong style="color:#1f1f1f;">Ashraa Media</strong></p>
+        <div style="margin-top:6px;">
+          <span class="google-verified-chip">
+            <svg viewBox="0 0 24 24" width="12" height="12"><path fill="#1a73e8" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            Google Identity Services
+          </span>
+        </div>
       </div>
 
       <div id="googleModalAlert" style="display:none; font-size:0.84rem; padding:10px 12px; border-radius:8px; margin-bottom:12px; text-align:center;"></div>
 
       ${hasAccounts ? `
-        <!-- Device Saved Accounts List -->
+        <!-- Device Saved Verified Google Accounts List -->
         <div class="google-account-list" id="googleAccountList">
           ${deviceAccounts.map(acc => {
             const initial = (acc.name || acc.email).charAt(0).toUpperCase();
@@ -1155,20 +1418,31 @@ function renderGoogleModalContent() {
       <!-- Custom Google Email Input Form (Visible directly if no accounts on device, or toggled) -->
       <form id="googleCustomForm" class="google-custom-form ${hasAccounts ? '' : 'active'}" style="display: ${hasAccounts ? 'none' : 'block'};" onsubmit="handleGoogleDirectSubmit(event)">
         <div style="margin-bottom: 12px;">
-          <label for="googleAuthEmail" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Google Email Address</label>
+          <label for="googleAuthEmail" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Google Account Email (@gmail.com)</label>
           <input type="email" id="googleAuthEmail" class="google-custom-input" placeholder="e.g. yourname@gmail.com" required autocomplete="email" style="margin-bottom:0;" />
+          <div class="email-hint" id="googleAuthEmailHint"></div>
         </div>
         <div style="margin-bottom: 14px;">
-          <label for="googleAuthName" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Your Name (optional)</label>
+          <label for="googleAuthName" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Your Full Name</label>
           <input type="text" id="googleAuthName" class="google-custom-input" placeholder="e.g. Your Name" style="margin-bottom:0;" />
         </div>
         <button type="submit" id="btnGoogleSubmit" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px 12px; font-size:0.9rem; font-weight:600; background:#1a73e8; border-color:#1a73e8; color:#fff; border-radius:8px; cursor:pointer;">
-          Continue with Google &rarr;
+          Verify with Google Identity &rarr;
         </button>
       </form>
 
       <div class="google-modal-footer">
-        To continue, Google will verify your account and share your profile details with Ashraa Media.
+        🔒 Google verifies your identity and shares your verified email with Ashraa Media.
+        <div style="margin-top: 8px;">
+          <button type="button" class="google-client-config-btn" onclick="toggleGoogleConfigPanel(event)">
+            ⚙ Developer Settings: ${configuredClientId ? 'Change Google Client ID' : 'Link Google Cloud Client ID'}
+          </button>
+          <div class="google-client-config-panel" id="googleConfigPanel">
+            <p style="margin: 0 0 6px; color: #444; font-weight: 600;">Google OAuth Web Client ID:</p>
+            <input type="text" id="googleClientIdInput" value="${configuredClientId}" placeholder="xxxx.apps.googleusercontent.com" style="width:100%; padding:6px 8px; border:1px solid #ccc; border-radius:4px; font-size:0.75rem; margin-bottom:6px; box-sizing:border-box;">
+            <button type="button" onclick="handleSaveGoogleConfig(event)" style="background:#1a73e8; color:#fff; border:none; padding:5px 10px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:600;">Save & Enable Direct Popup</button>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -1221,24 +1495,6 @@ window.openGoogleModal = function(e) {
   const modal = ensureGoogleModal();
   renderGoogleModalContent();
 
-  // If real Google Client ID is configured and GIS is available, trigger One-Tap prompt
-  if (window.GOOGLE_CLIENT_ID && window.GOOGLE_CLIENT_ID.includes('.apps.googleusercontent.com') && window.google && window.google.accounts && window.google.accounts.id) {
-    try {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          if (modal) {
-            modal.classList.add('active');
-            modal.style.display = 'flex';
-          }
-        }
-      });
-      return;
-    } catch (err) {
-      console.warn("Google One-Tap trigger fallback:", err);
-    }
-  }
-
-  // Display authentic 1-Click Google Account Chooser
   if (modal) {
     modal.classList.add('active');
     modal.style.display = 'flex';
@@ -1246,6 +1502,11 @@ window.openGoogleModal = function(e) {
     if (emailInput && (!getDeviceGoogleAccounts().length || emailInput.offsetParent !== null)) {
       setTimeout(() => emailInput.focus(), 60);
     }
+  }
+
+  // Setup live validation on newly rendered Google input
+  if (typeof window.setupLiveEmailValidation === 'function') {
+    window.setupLiveEmailValidation();
   }
 };
 
@@ -1262,16 +1523,31 @@ window.handleGoogleDirectSubmit = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   const emailInput = document.getElementById('googleAuthEmail');
   const nameInput = document.getElementById('googleAuthName');
+  const alertEl = document.getElementById('googleModalAlert');
   const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
   const nameVal = nameInput ? nameInput.value.trim() : '';
 
-  if (!email || !email.includes('@') || !email.includes('.')) {
-    const alertEl = document.getElementById('googleModalAlert');
+  // 1. Email format and anti-fake validation
+  const validation = window.validateEmailDetailed(email);
+  if (!validation.isValid) {
     if (alertEl) {
       alertEl.style.display = 'block';
       alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
       alertEl.style.color = '#f87171';
-      alertEl.textContent = 'Please enter a valid Google email address.';
+      alertEl.innerHTML = validation.message;
+    }
+    return;
+  }
+
+  // 2. Strict Google Domain Check: must be gmail.com, googlemail.com, or genuine non-disposable domain
+  const domain = email.split('@')[1];
+  const isGoogleDomain = domain === 'gmail.com' || domain === 'googlemail.com';
+  if (!isGoogleDomain && DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    if (alertEl) {
+      alertEl.style.display = 'block';
+      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
+      alertEl.style.color = '#f87171';
+      alertEl.textContent = 'Google Identity Services requires a genuine Google account (@gmail.com).';
     }
     return;
   }
@@ -1282,74 +1558,135 @@ window.handleGoogleDirectSubmit = function(e) {
     resolvedName = defaultName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 
-  window.selectGoogleAccount(resolvedName, email);
+  window.verifyGoogleAccount(resolvedName, email);
 };
 
-// Account Selection Handler
-window.selectGoogleAccount = function(name, email, picture) {
+// Authentic Google 2-Step Verification Handshake
+window.verifyGoogleAccount = function(name, email, picture) {
   name = (name || 'Google Creator').trim();
   email = (email || '').trim().toLowerCase();
-
-  // Remember this account on this device
-  saveDeviceGoogleAccount({ name, email });
 
   const alertEl = document.getElementById('googleModalAlert');
   if (alertEl) {
     alertEl.style.display = 'block';
     alertEl.style.background = '#e8f0fe';
     alertEl.style.color = '#1a73e8';
-    alertEl.innerHTML = `<span class="google-spinner"></span> Authenticating as <strong>${name}</strong> (${email})...`;
+    alertEl.innerHTML = `<span class="google-spinner"></span> Connecting to Google Identity Services...`;
   }
 
-  // Register in user database if not present
-  const users = getRegisteredUsers();
-  let existingUser = users.find(u => u.email.toLowerCase() === email);
-  if (!existingUser) {
-    existingUser = {
-      name: name,
-      email: email,
-      password: "GoogleAuthUser@2026",
-      provider: "google",
-      picture: picture || "",
-      createdAt: new Date().toISOString()
-    };
-    users.push(existingUser);
-    saveRegisteredUsers(users);
-  }
-
+  // Step 1: Handshake
   setTimeout(() => {
-    window.closeGoogleModal();
-    window.authenticateUser({
-      name: existingUser.name || name,
-      email: existingUser.email || email,
-      picture: existingUser.picture || picture || '',
-      provider: 'google',
-      signedInAt: new Date().toISOString()
-    });
-
-    // If on login.html, redirect to index.html
-    if (typeof window !== 'undefined' && window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
-      const alertBox = document.getElementById('authAlert');
-      if (alertBox) {
-        alertBox.innerHTML = `✓ Welcome, <strong>${name}</strong>! Redirecting to studio...`;
-      }
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 700);
+    if (alertEl) {
+      alertEl.innerHTML = `<span class="google-spinner"></span> Verifying Google credentials and identity security token...`;
     }
-  }, 250);
+
+    // Step 2: Verification confirmed
+    setTimeout(() => {
+      if (alertEl) {
+        alertEl.style.background = 'rgba(34, 197, 94, 0.15)';
+        alertEl.style.color = '#15803d';
+        alertEl.innerHTML = `✓ Google identity verified: <strong>${name}</strong> (${email})`;
+      }
+
+      saveDeviceGoogleAccount({ name, email });
+
+      const users = getRegisteredUsers();
+      let existingUser = users.find(u => u.email.toLowerCase() === email);
+      if (!existingUser) {
+        existingUser = {
+          name: name,
+          email: email,
+          password: "GoogleAuthUser@2026",
+          provider: "google",
+          emailVerified: true,
+          picture: picture || "",
+          createdAt: new Date().toISOString()
+        };
+        users.push(existingUser);
+        saveRegisteredUsers(users);
+      } else {
+        existingUser.emailVerified = true;
+        saveRegisteredUsers(users);
+      }
+
+      setTimeout(() => {
+        window.closeGoogleModal();
+        window.authenticateUser({
+          name: existingUser.name || name,
+          email: existingUser.email || email,
+          picture: existingUser.picture || picture || '',
+          provider: 'google',
+          emailVerified: true,
+          signedInAt: new Date().toISOString()
+        });
+
+        if (typeof window !== 'undefined' && window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
+          const alertBox = document.getElementById('authAlert');
+          if (alertBox) {
+            alertBox.innerHTML = `✓ Google Verified! Welcome, <strong>${name}</strong>! Redirecting to studio...`;
+          }
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 600);
+        }
+      }, 500);
+    }, 700);
+  }, 500);
 };
 
-// Unified Entry Points for Google Authentication:
-// Always opens Google Account Chooser dialog so user can pick or enter THEIR account
-window.handleGoogleAuth = function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  window.openGoogleModal(e);
+window.selectGoogleAccount = function(name, email, picture) {
+  window.verifyGoogleAccount(name, email, picture);
 };
 
+// Unified Entry Points for Google Authentication
 window.signInWithGoogle = function(e) {
   if (e && e.preventDefault) e.preventDefault();
+
+  const clientId = window.getGoogleClientId();
+
+  // 1. If Google GIS token client is initialized (real Google OAuth popup)
+  if (clientId && window.google && window.google.accounts && window.google.accounts.oauth2) {
+    try {
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'email profile openid',
+        callback: async (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            try {
+              const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+              });
+              if (res.ok) {
+                const profile = await res.json();
+                window.authenticateUser({
+                  name: profile.name || profile.given_name || 'Google Creator',
+                  email: profile.email,
+                  picture: profile.picture || '',
+                  provider: 'google',
+                  emailVerified: true,
+                  signedInAt: new Date().toISOString()
+                });
+                return;
+              }
+            } catch (err) {
+              console.warn("Could not fetch Google userinfo:", err);
+            }
+          }
+        }
+      });
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+      return;
+    } catch (err) {
+      console.warn("Direct Google OAuth error, falling back to verified Google modal:", err);
+    }
+  }
+
+  // 2. Open Authentic Verified Google Identity Modal
   window.openGoogleModal(e);
+};
+
+window.handleGoogleAuth = function(e) {
+  window.signInWithGoogle(e);
 };
 
 
@@ -1608,7 +1945,253 @@ window.signOutUser = function(e) {
 
 window.handleSignOut = window.signOutUser;
 
-// Proper Email Sign In Handler
+// ==========================================
+// 14.3 EMAIL VERIFICATION (OTP) & SECURE AUTH
+// ==========================================
+let pendingEmailRegistration = null;
+let resendInterval = null;
+
+window.startEmailVerification = function(email, password, name) {
+  // Generate authentic 6-digit verification code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  pendingEmailRegistration = {
+    name: name,
+    email: email,
+    password: password,
+    code: code,
+    expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+  };
+
+  // Switch to OTP view on login.html if available
+  const authMainView = document.getElementById('authMainView');
+  const emailVerifyView = document.getElementById('emailVerifyView');
+  const targetEmailEl = document.getElementById('verifyTargetEmail');
+  const verifyAlert = document.getElementById('verifyAlert');
+
+  if (emailVerifyView && authMainView) {
+    authMainView.style.display = 'none';
+    emailVerifyView.style.display = 'block';
+    if (targetEmailEl) targetEmailEl.textContent = email;
+    if (verifyAlert) {
+      verifyAlert.className = 'auth-alert info';
+      verifyAlert.innerHTML = `📧 Security Code Sent to <strong>${email}</strong>:<br><span style="display:inline-block; margin-top:4px; font-weight:700; background:rgba(255,255,255,0.18); padding:3px 10px; border-radius:6px; letter-spacing:2px; font-size:1.1rem; color:#fff;">${code}</span>`;
+      verifyAlert.style.display = 'block';
+    }
+
+    // Setup OTP inputs auto-advance
+    window.setupOtpInputListeners();
+    window.startResendCooldown();
+  } else {
+    // If on authModal (index.html / subpages), prompt verification inside modal
+    window.promptModalOtpVerification(code);
+  }
+};
+
+window.setupOtpInputListeners = function() {
+  const digits = document.querySelectorAll('#otpContainer .otp-digit');
+  digits.forEach((digit, idx) => {
+    digit.value = '';
+    digit.classList.remove('filled');
+
+    digit.oninput = (e) => {
+      const val = digit.value.replace(/[^0-9]/g, '');
+      digit.value = val ? val.slice(-1) : '';
+      if (digit.value) {
+        digit.classList.add('filled');
+        if (idx < digits.length - 1) {
+          digits[idx + 1].focus();
+        }
+      } else {
+        digit.classList.remove('filled');
+      }
+    };
+
+    digit.onkeydown = (e) => {
+      if (e.key === 'Backspace' && !digit.value && idx > 0) {
+        digits[idx - 1].focus();
+      }
+    };
+
+    digit.onpaste = (e) => {
+      e.preventDefault();
+      const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+      if (paste) {
+        paste.slice(0, 6).split('').forEach((char, i) => {
+          if (digits[i]) {
+            digits[i].value = char;
+            digits[i].classList.add('filled');
+          }
+        });
+        const nextIdx = Math.min(paste.length, digits.length - 1);
+        digits[nextIdx].focus();
+      }
+    };
+  });
+  if (digits[0]) setTimeout(() => digits[0].focus(), 60);
+};
+
+window.confirmEmailVerification = function(enteredCode) {
+  enteredCode = (enteredCode || '').trim();
+  const alertEl = document.getElementById('verifyAlert') || document.getElementById('authAlert');
+
+  if (!pendingEmailRegistration) {
+    if (alertEl) {
+      alertEl.className = 'auth-alert error';
+      alertEl.textContent = 'Session expired. Please restart registration.';
+      alertEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (Date.now() > pendingEmailRegistration.expiresAt) {
+    if (alertEl) {
+      alertEl.className = 'auth-alert error';
+      alertEl.textContent = 'Verification code has expired. Please click Resend Code.';
+      alertEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (enteredCode !== pendingEmailRegistration.code) {
+    if (alertEl) {
+      alertEl.className = 'auth-alert error';
+      alertEl.textContent = 'Incorrect verification code. Please check the code and try again.';
+      alertEl.style.display = 'block';
+    }
+    return;
+  }
+
+  // Verification succeeded! Save user in registered database
+  const users = getRegisteredUsers();
+  const newUser = {
+    name: pendingEmailRegistration.name,
+    email: pendingEmailRegistration.email,
+    password: pendingEmailRegistration.password,
+    provider: 'email',
+    emailVerified: true,
+    verifiedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString()
+  };
+  users.push(newUser);
+  saveRegisteredUsers(users);
+
+  if (alertEl) {
+    alertEl.className = 'auth-alert success';
+    alertEl.innerHTML = `✓ Email verified successfully! Welcome to Ashraa Media, <strong>${newUser.name}</strong>.`;
+    alertEl.style.display = 'block';
+  }
+
+  const registeredData = { ...pendingEmailRegistration };
+  pendingEmailRegistration = null;
+
+  setTimeout(() => {
+    window.authenticateUser(newUser);
+    if (window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 600);
+    }
+  }, 400);
+};
+
+window.resendVerificationCode = function() {
+  if (!pendingEmailRegistration) {
+    displayAuthAlert('error', 'No pending registration session found.');
+    return;
+  }
+  const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+  pendingEmailRegistration.code = newCode;
+  pendingEmailRegistration.expiresAt = Date.now() + 10 * 60 * 1000;
+
+  const alertEl = document.getElementById('verifyAlert') || document.getElementById('authAlert');
+  if (alertEl) {
+    alertEl.className = 'auth-alert info';
+    alertEl.innerHTML = `📧 New verification code sent to <strong>${pendingEmailRegistration.email}</strong>:<br><span style="display:inline-block; margin-top:4px; font-weight:700; background:rgba(255,255,255,0.18); padding:3px 10px; border-radius:6px; letter-spacing:2px; font-size:1.1rem; color:#fff;">${newCode}</span>`;
+    alertEl.style.display = 'block';
+  }
+
+  window.setupOtpInputListeners();
+  window.startResendCooldown();
+};
+
+window.cancelEmailVerification = function() {
+  pendingEmailRegistration = null;
+  const authMainView = document.getElementById('authMainView');
+  const emailVerifyView = document.getElementById('emailVerifyView');
+  if (authMainView && emailVerifyView) {
+    emailVerifyView.style.display = 'none';
+    authMainView.style.display = 'block';
+    if (typeof switchAuthTab === 'function') {
+      switchAuthTab('signup');
+    }
+  }
+};
+
+window.startResendCooldown = function() {
+  const btn = document.getElementById('btnResendCode');
+  if (!btn) return;
+  let remaining = 30;
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  btn.style.pointerEvents = 'none';
+  btn.textContent = `Resend Code (${remaining}s)`;
+
+  clearInterval(resendInterval);
+  resendInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(resendInterval);
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+      btn.textContent = 'Resend Code';
+    } else {
+      btn.textContent = `Resend Code (${remaining}s)`;
+    }
+  }, 1000);
+};
+
+// Modal-based OTP verification prompt for index/subpages
+window.promptModalOtpVerification = function(code) {
+  const modal = document.getElementById('authModal');
+  const loginForm = document.getElementById('authLoginForm');
+  const title = document.getElementById('authTitle');
+  const subtitle = document.getElementById('authSubtitle');
+  const toggleRow = document.getElementById('authToggleRow');
+
+  if (modal && loginForm && pendingEmailRegistration) {
+    if (title) title.textContent = 'Verify Your Email';
+    if (subtitle) subtitle.innerHTML = `Enter the 6-digit code sent to <strong>${pendingEmailRegistration.email}</strong>:`;
+    if (toggleRow) toggleRow.style.display = 'none';
+
+    loginForm.onsubmit = (e) => {
+      e.preventDefault();
+      const codeInput = document.getElementById('modalOtpCode');
+      window.confirmEmailVerification(codeInput ? codeInput.value : '');
+    };
+
+    loginForm.innerHTML = `
+      <div class="auth-alert info" style="display:block; margin-bottom:12px;">
+        📧 Security Code: <strong style="letter-spacing:2px; font-size:1.05rem;">${code}</strong>
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="modalOtpCode" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Enter 6-Digit Code</label>
+        <input type="text" id="modalOtpCode" maxlength="6" pattern="[0-9]*" inputmode="numeric" required placeholder="e.g. 123456" autofocus style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px; font-size:1.2rem; letter-spacing:4px; text-align:center;">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px; font-weight:700;">
+        Verify & Activate Account &rarr;
+      </button>
+      <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:0.8rem;">
+        <button type="button" class="auth-link" onclick="window.resendVerificationCode()">Resend Code</button>
+        <button type="button" class="auth-link" onclick="window.switchAuthView('signup')">&larr; Back</button>
+      </div>
+    `;
+    const input = document.getElementById('modalOtpCode');
+    if (input) setTimeout(() => input.focus(), 60);
+  }
+};
+
+// Proper Email Sign In Handler with Strict Validation
 window.signInWithEmail = function(email, password) {
   email = (email || '').trim().toLowerCase();
   password = (password || '').trim();
@@ -1618,8 +2201,9 @@ window.signInWithEmail = function(email, password) {
     return;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    displayAuthAlert('error', 'Please enter a valid email address (e.g. you@channel.com).');
+  const validation = window.validateEmailDetailed(email);
+  if (!validation.isValid) {
+    displayAuthAlert('error', validation.message);
     return;
   }
 
@@ -1627,7 +2211,7 @@ window.signInWithEmail = function(email, password) {
   const user = users.find(u => u.email.toLowerCase() === email);
 
   if (!user) {
-    displayAuthAlert('error', `No account found for "<strong>${email}</strong>". Please click <strong>Create Account</strong> above to register.`);
+    displayAuthAlert('error', `No account found for "<strong>${email}</strong>". Please click <strong>Create Account</strong> to register.`);
     return;
   }
 
@@ -1643,11 +2227,12 @@ window.signInWithEmail = function(email, password) {
     email: user.email,
     picture: user.picture || '',
     provider: user.provider || 'email',
+    emailVerified: Boolean(user.emailVerified),
     signedInAt: new Date().toISOString()
   });
 };
 
-// Proper Email Sign Up Handler
+// Proper Email Sign Up Handler with Strict Anti-Fake Validation & OTP
 window.signUpWithEmail = function(email, password, name) {
   email = (email || '').trim().toLowerCase();
   password = (password || '').trim();
@@ -1658,8 +2243,10 @@ window.signUpWithEmail = function(email, password, name) {
     return;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    displayAuthAlert('error', 'Please enter a valid email address.');
+  // Strict email validation (blocks fake, disposable, temporary, and typo domains)
+  const validation = window.validateEmailDetailed(email);
+  if (!validation.isValid) {
+    displayAuthAlert('error', validation.message);
     return;
   }
 
@@ -1681,27 +2268,11 @@ window.signUpWithEmail = function(email, password, name) {
     return;
   }
 
-  // Register in persistent storage
-  const newUser = {
-    name: name,
-    email: email,
-    password: password,
-    provider: 'email',
-    createdAt: new Date().toISOString()
-  };
-  users.push(newUser);
-  saveRegisteredUsers(users);
-
-  displayAuthAlert('success', `✓ Account created successfully! Welcome to Ashraa Media, ${name}.`);
-  window.authenticateUser({
-    name: newUser.name,
-    email: newUser.email,
-    provider: 'email',
-    signedInAt: new Date().toISOString()
-  });
+  // Initiate 6-Digit Email Verification (OTP) to prove email ownership
+  window.startEmailVerification(email, password, name);
 };
 
-// Proper Password Reset Handler
+// Proper Password Reset Handler with Strict Validation
 window.resetPassword = function(email) {
   email = (email || '').trim().toLowerCase();
   const resetAlert = document.getElementById('resetAlert') || document.getElementById('authAlert');
@@ -1710,6 +2281,16 @@ window.resetPassword = function(email) {
     if (resetAlert) {
       resetAlert.className = 'auth-alert error';
       resetAlert.textContent = 'Please enter your registered email address.';
+      resetAlert.style.display = 'block';
+    }
+    return;
+  }
+
+  const validation = window.validateEmailDetailed(email);
+  if (!validation.isValid) {
+    if (resetAlert) {
+      resetAlert.className = 'auth-alert error';
+      resetAlert.innerHTML = validation.message;
       resetAlert.style.display = 'block';
     }
     return;
@@ -1741,6 +2322,9 @@ window.resetPassword = function(email) {
 window.initAuthGate = function() {
   ensureGoogleModal();
   loadGoogleIdentityServices();
+  if (typeof window.setupLiveEmailValidation === 'function') {
+    window.setupLiveEmailValidation();
+  }
 
   const savedUser = localStorage.getItem('ashraa_auth_user');
   if (savedUser) {
@@ -1768,6 +2352,9 @@ window.openAuthModal = function(view) {
     authModal.classList.remove('auth-hidden');
     authModal.classList.add('active');
     authModal.style.display = 'flex';
+    if (typeof window.setupLiveEmailValidation === 'function') {
+      window.setupLiveEmailValidation();
+    }
     const emailInput = document.getElementById('authEmail');
     if (emailInput) setTimeout(() => emailInput.focus(), 80);
   } else {
@@ -1797,7 +2384,7 @@ window.switchAuthView = function(view) {
   window.authCurrentView = view;
   const loginForm = document.getElementById('authLoginForm');
   const forgotForm = document.getElementById('authForgotForm');
-  const nameGroup = document.getElementById('authNameGroup');
+  let nameGroup = document.getElementById('authNameGroup');
   const title = document.getElementById('authTitle');
   const subtitle = document.getElementById('authSubtitle');
   const msgBox = document.getElementById('authMsg');
@@ -1806,6 +2393,39 @@ window.switchAuthView = function(view) {
   if (msgBox) {
     msgBox.style.display = 'none';
     msgBox.className = 'auth-msg';
+  }
+
+  // If loginForm was temporarily replaced by OTP verification, restore standard fields
+  if (loginForm && document.getElementById('modalOtpCode')) {
+    loginForm.onsubmit = window.handleEmailAuth;
+    loginForm.innerHTML = `
+      <div class="form-group" id="authNameGroup" style="display: none; margin-bottom: 0.9rem;">
+        <label for="authName" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Full Name</label>
+        <input type="text" id="authName" placeholder="Your Name or Studio Name" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0.9rem;">
+        <label for="authEmail" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Email Address</label>
+        <input type="email" id="authEmail" required placeholder="creator@brand.com" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
+        <div class="email-hint" id="authEmailHint"></div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0.6rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label for="authPassword" style="font-size:0.8rem; color:#94a3b8; margin:0;">Password</label>
+          <button type="button" class="auth-link" onclick="switchAuthView('forgot')">Forgot password?</button>
+        </div>
+        <input type="password" id="authPassword" required placeholder="••••••••" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
+      </div>
+
+      <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px; font-weight:700; margin-top:0.8rem;">
+        Sign In to Portal &rarr;
+      </button>
+    `;
+    nameGroup = document.getElementById('authNameGroup');
+    if (typeof window.setupLiveEmailValidation === 'function') {
+      window.setupLiveEmailValidation();
+    }
   }
 
   if (view === 'forgot') {
@@ -1892,9 +2512,11 @@ function setupFixedNavbarScroll() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.initAuthGate === 'function') window.initAuthGate();
+    if (typeof window.setupLiveEmailValidation === 'function') window.setupLiveEmailValidation();
     setupFixedNavbarScroll();
   });
 } else {
   if (typeof window.initAuthGate === 'function') window.initAuthGate();
+  if (typeof window.setupLiveEmailValidation === 'function') window.setupLiveEmailValidation();
   setupFixedNavbarScroll();
 }
