@@ -910,17 +910,35 @@ function displayAuthAlert(type, message) {
   }
 }
 
-// Ensure the Google Account Modal exists in DOM
-function ensureGoogleModal() {
-  let modal = document.getElementById('googleAccountModal');
-  if (modal) return modal;
+// Device-Specific Remembered Google Accounts (Stored per device in localStorage)
+function getDeviceGoogleAccounts() {
+  try {
+    const raw = localStorage.getItem('ashraa_device_google_accounts');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
 
-  modal = document.createElement('div');
-  modal.className = 'google-modal';
-  modal.id = 'googleAccountModal';
-  modal.setAttribute('role', 'dialog');
-  modal.setAttribute('aria-modal', 'true');
-  modal.setAttribute('aria-labelledby', 'googleModalTitle');
+function saveDeviceGoogleAccount(account) {
+  if (!account || !account.email) return;
+  const list = getDeviceGoogleAccounts().filter(a => a.email.toLowerCase() !== account.email.toLowerCase());
+  list.unshift({
+    name: account.name || account.email.split('@')[0],
+    email: account.email.toLowerCase()
+  });
+  try {
+    localStorage.setItem('ashraa_device_google_accounts', JSON.stringify(list.slice(0, 5)));
+  } catch (e) {}
+}
+
+// Render dynamic Google Account Chooser content based on device accounts
+function renderGoogleModalContent() {
+  const modal = document.getElementById('googleAccountModal');
+  if (!modal) return;
+
+  const deviceAccounts = getDeviceGoogleAccounts();
+  const hasAccounts = deviceAccounts.length > 0;
 
   modal.innerHTML = `
     <div class="google-modal-box">
@@ -932,58 +950,74 @@ function ensureGoogleModal() {
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
-        <h3 class="google-modal-title" id="googleModalTitle">Choose an account</h3>
-        <p class="google-modal-subtitle">to continue to <strong style="color:#1f1f1f;">Ashraa Media</strong></p>
+        <h3 class="google-modal-title" id="googleModalTitle">${hasAccounts ? 'Choose an account' : 'Sign in with Google'}</h3>
+        <p class="google-modal-subtitle">${hasAccounts ? 'to continue to <strong style="color:#1f1f1f;">Ashraa Media</strong>' : 'Enter your Google email to continue to <strong style="color:#1f1f1f;">Ashraa Media</strong>'}</p>
       </div>
 
       <div id="googleModalAlert" style="display:none; font-size:0.84rem; padding:10px 12px; border-radius:8px; margin-bottom:12px; text-align:center;"></div>
 
-      <!-- Quick 1-Click Accounts List (First & Prominent) -->
-      <div class="google-account-list" id="googleAccountList">
-        <button type="button" class="google-account-item" onclick="selectGoogleAccount('Shilpi Thakur', 'shilpithskur9b37@gmail.com')">
-          <div class="google-account-avatar">S</div>
-          <div class="google-account-info">
-            <div class="google-account-name">Shilpi Thakur</div>
-            <div class="google-account-email">shilpithskur9b37@gmail.com</div>
-          </div>
-          <span class="google-account-arrow">&rsaquo;</span>
-        </button>
+      ${hasAccounts ? `
+        <!-- Device Saved Accounts List -->
+        <div class="google-account-list" id="googleAccountList">
+          ${deviceAccounts.map(acc => {
+            const initial = (acc.name || acc.email).charAt(0).toUpperCase();
+            const safeName = (acc.name || acc.email).replace(/'/g, "\\'");
+            const safeEmail = acc.email.replace(/'/g, "\\'");
+            return `
+              <button type="button" class="google-account-item" onclick="selectGoogleAccount('${safeName}', '${safeEmail}')">
+                <div class="google-account-avatar">${initial}</div>
+                <div class="google-account-info">
+                  <div class="google-account-name">${acc.name}</div>
+                  <div class="google-account-email">${acc.email}</div>
+                </div>
+                <span class="google-account-arrow">&rsaquo;</span>
+              </button>
+            `;
+          }).join('')}
 
-        <button type="button" class="google-account-item" onclick="selectGoogleAccount('Ashraa Studio', 'ashraaofficial@gmail.com')">
-          <div class="google-account-avatar" style="background:#ea4335;">A</div>
-          <div class="google-account-info">
-            <div class="google-account-name">Ashraa Studio</div>
-            <div class="google-account-email">ashraaofficial@gmail.com</div>
-          </div>
-          <span class="google-account-arrow">&rsaquo;</span>
-        </button>
-
-        <!-- Use Another Account Option -->
-        <button type="button" class="google-custom-trigger" onclick="toggleCustomGoogleAccount(event)">
-          <div class="google-account-avatar" style="background:#f1f3f4; color:#1a73e8; font-weight:700;">+</div>
-          <div class="google-account-info">
-            <div class="google-account-name" style="color:#1a73e8; font-weight:600;">Use another Google account</div>
-          </div>
-          <span class="google-account-arrow" style="color:#1a73e8;">&rsaquo;</span>
-        </button>
-      </div>
-
-      <!-- Expandable Single Input for Custom Google Email -->
-      <form id="googleCustomForm" class="google-custom-form" onsubmit="handleGoogleDirectSubmit(event)" style="display: none;">
-        <div style="margin-bottom: 8px;">
-          <label for="googleAuthEmail" style="display:block; font-size:0.78rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Google Email Address</label>
-          <input type="email" id="googleAuthEmail" class="google-custom-input" placeholder="e.g. yourname@gmail.com" required autocomplete="email" style="margin-bottom:8px;" />
+          <button type="button" class="google-custom-trigger" onclick="toggleCustomGoogleAccount(event)">
+            <div class="google-account-avatar" style="background:#f1f3f4; color:#1a73e8; font-weight:700;">+</div>
+            <div class="google-account-info">
+              <div class="google-account-name" style="color:#1a73e8; font-weight:600;">Use another Google account</div>
+            </div>
+            <span class="google-account-arrow" style="color:#1a73e8;">&rsaquo;</span>
+          </button>
         </div>
-        <button type="submit" id="btnGoogleSubmit" class="btn btn-primary" style="width:100%; justify-content:center; padding:10px 12px; font-size:0.88rem; font-weight:600; background:#1a73e8; border-color:#1a73e8; color:#fff; border-radius:8px; cursor:pointer;">
+      ` : ''}
+
+      <!-- Custom Google Email Input Form (Visible directly if no accounts on device, or toggled) -->
+      <form id="googleCustomForm" class="google-custom-form ${hasAccounts ? '' : 'active'}" style="display: ${hasAccounts ? 'none' : 'block'};" onsubmit="handleGoogleDirectSubmit(event)">
+        <div style="margin-bottom: 12px;">
+          <label for="googleAuthEmail" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Google Email Address</label>
+          <input type="email" id="googleAuthEmail" class="google-custom-input" placeholder="e.g. yourname@gmail.com" required autocomplete="email" style="margin-bottom:0;" />
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label for="googleAuthName" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Your Name (optional)</label>
+          <input type="text" id="googleAuthName" class="google-custom-input" placeholder="e.g. Your Name" style="margin-bottom:0;" />
+        </div>
+        <button type="submit" id="btnGoogleSubmit" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px 12px; font-size:0.9rem; font-weight:600; background:#1a73e8; border-color:#1a73e8; color:#fff; border-radius:8px; cursor:pointer;">
           Continue with Google &rarr;
         </button>
       </form>
 
       <div class="google-modal-footer">
-        To continue, Google will share your name, email address, language preference, and profile picture with Ashraa Media.
+        To continue, Google will verify your account and share your profile details with Ashraa Media.
       </div>
     </div>
   `;
+}
+
+// Ensure the Google Account Modal exists in DOM
+function ensureGoogleModal() {
+  let modal = document.getElementById('googleAccountModal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.className = 'google-modal';
+  modal.id = 'googleAccountModal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'googleModalTitle');
 
   document.body.appendChild(modal);
 
@@ -1011,13 +1045,14 @@ window.toggleCustomGoogleAccount = function(e) {
   }
 };
 
-// Google Modal Open Action
+// Google Modal Open Action - Always prompts user to choose/enter account
 window.openGoogleModal = function(e) {
   if (e) {
     if (e.preventDefault) e.preventDefault();
     if (e.stopPropagation) e.stopPropagation();
   }
   const modal = ensureGoogleModal();
+  renderGoogleModalContent();
 
   // If real Google Client ID is configured and GIS is available, trigger One-Tap prompt
   if (window.GOOGLE_CLIENT_ID && window.GOOGLE_CLIENT_ID.includes('.apps.googleusercontent.com') && window.google && window.google.accounts && window.google.accounts.id) {
@@ -1031,25 +1066,19 @@ window.openGoogleModal = function(e) {
         }
       });
       return;
-    } catch (e) {
-      console.warn("Google One-Tap trigger fallback:", e);
+    } catch (err) {
+      console.warn("Google One-Tap trigger fallback:", err);
     }
   }
 
   // Display authentic 1-Click Google Account Chooser
   if (modal) {
-    const alertEl = document.getElementById('googleModalAlert');
-    if (alertEl) {
-      alertEl.style.display = 'none';
-      alertEl.textContent = '';
-    }
-    const customForm = document.getElementById('googleCustomForm');
-    if (customForm) {
-      customForm.classList.remove('active');
-      customForm.style.display = 'none';
-    }
     modal.classList.add('active');
     modal.style.display = 'flex';
+    const emailInput = document.getElementById('googleAuthEmail');
+    if (emailInput && (!getDeviceGoogleAccounts().length || emailInput.offsetParent !== null)) {
+      setTimeout(() => emailInput.focus(), 60);
+    }
   }
 };
 
@@ -1061,130 +1090,13 @@ window.closeGoogleModal = function() {
   }
 };
 
-// 1-Click Direct Google Authentication Handler
-window.handleGoogleAuth = function(e, specificUser) {
-  if (e && e.preventDefault) e.preventDefault();
-
-  const googleUser = specificUser || {
-    name: 'Shilpi Thakur',
-    email: 'shilpithskur9b37@gmail.com',
-    provider: 'google',
-    picture: '',
-    signedInAt: new Date().toISOString()
-  };
-
-  // Immediate visual feedback on all Google buttons
-  const googleBtns = document.querySelectorAll('.btn-google-auth, .btn-google');
-  googleBtns.forEach(btn => {
-    if (!btn.hasAttribute('data-original-html')) {
-      btn.setAttribute('data-original-html', btn.innerHTML);
-    }
-    btn.disabled = true;
-    btn.innerHTML = `
-      <span class="google-spinner"></span>
-      <span>Connecting with Google...</span>
-    `;
-  });
-
-  // Modal alert inside Google Chooser if open
-  const modalAlertEl = document.getElementById('googleModalAlert');
-  if (modalAlertEl) {
-    modalAlertEl.style.display = 'block';
-    modalAlertEl.style.background = '#e8f0fe';
-    modalAlertEl.style.color = '#1a73e8';
-    modalAlertEl.innerHTML = `<span class="google-spinner"></span> Authenticating as <strong>${googleUser.name}</strong> (${googleUser.email})...`;
-  }
-
-  // Provide immediate status feedback in authModal
-  const msgBox = document.getElementById('authMsg');
-  if (msgBox) {
-    msgBox.className = 'auth-msg success';
-    msgBox.innerHTML = `✓ Authenticating with Google as <strong>${googleUser.name}</strong>...`;
-    msgBox.style.display = 'block';
-  }
-
-  // Provide immediate status feedback on login.html
-  const alertBox = document.getElementById('authAlert');
-  if (alertBox) {
-    alertBox.className = 'auth-alert success';
-    alertBox.innerHTML = `✓ Authenticating with Google as <strong>${googleUser.name}</strong> (${googleUser.email})...`;
-    alertBox.style.display = 'block';
-  }
-
-  // Register in user database if not present
-  const users = getRegisteredUsers();
-  let existingUser = users.find(u => u.email.toLowerCase() === googleUser.email.toLowerCase());
-  if (!existingUser) {
-    existingUser = {
-      name: googleUser.name,
-      email: googleUser.email,
-      password: "GoogleAuthUser@2026",
-      provider: "google",
-      picture: googleUser.picture || "",
-      createdAt: new Date().toISOString()
-    };
-    users.push(existingUser);
-    saveRegisteredUsers(users);
-  }
-
-  // Close Google Chooser modal if open
-  window.closeGoogleModal();
-
-  setTimeout(() => {
-    window.authenticateUser({
-      name: existingUser.name || googleUser.name,
-      email: existingUser.email || googleUser.email,
-      picture: existingUser.picture || googleUser.picture || '',
-      provider: 'google',
-      signedInAt: new Date().toISOString()
-    });
-
-    // If on login.html, smooth transition to home
-    if (typeof window !== 'undefined' && window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
-      const alertBox = document.getElementById('authAlert');
-      if (alertBox) {
-        alertBox.innerHTML = `✓ Welcome, <strong>${googleUser.name}</strong>! Redirecting to studio...`;
-      }
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 700);
-    }
-
-    // Restore button appearance after short delay
-    setTimeout(() => {
-      googleBtns.forEach(btn => {
-        btn.disabled = false;
-        const originalHtml = btn.getAttribute('data-original-html');
-        if (originalHtml) {
-          btn.innerHTML = originalHtml;
-        }
-      });
-    }, 400);
-  }, 250);
-};
-
-// Aliases and unified handlers
-window.signInWithGoogle = function(e) {
-  window.handleGoogleAuth(e);
-};
-
-window.selectGoogleAccount = function(name, email, picture) {
-  name = (name || 'Google Creator').trim();
-  email = (email || '').trim().toLowerCase();
-  window.handleGoogleAuth(null, {
-    name: name,
-    email: email,
-    picture: picture || '',
-    provider: 'google',
-    signedInAt: new Date().toISOString()
-  });
-};
-
 // Direct Submit for Custom Google Email
 window.handleGoogleDirectSubmit = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   const emailInput = document.getElementById('googleAuthEmail');
+  const nameInput = document.getElementById('googleAuthName');
   const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+  const nameVal = nameInput ? nameInput.value.trim() : '';
 
   if (!email || !email.includes('@') || !email.includes('.')) {
     const alertEl = document.getElementById('googleModalAlert');
@@ -1197,10 +1109,82 @@ window.handleGoogleDirectSubmit = function(e) {
     return;
   }
 
-  const defaultName = email.split('@')[0];
-  const resolvedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+  let resolvedName = nameVal;
+  if (!resolvedName) {
+    const defaultName = email.split('@')[0].replace(/[._-]/g, ' ');
+    resolvedName = defaultName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+
   window.selectGoogleAccount(resolvedName, email);
 };
+
+// Account Selection Handler
+window.selectGoogleAccount = function(name, email, picture) {
+  name = (name || 'Google Creator').trim();
+  email = (email || '').trim().toLowerCase();
+
+  // Remember this account on this device
+  saveDeviceGoogleAccount({ name, email });
+
+  const alertEl = document.getElementById('googleModalAlert');
+  if (alertEl) {
+    alertEl.style.display = 'block';
+    alertEl.style.background = '#e8f0fe';
+    alertEl.style.color = '#1a73e8';
+    alertEl.innerHTML = `<span class="google-spinner"></span> Authenticating as <strong>${name}</strong> (${email})...`;
+  }
+
+  // Register in user database if not present
+  const users = getRegisteredUsers();
+  let existingUser = users.find(u => u.email.toLowerCase() === email);
+  if (!existingUser) {
+    existingUser = {
+      name: name,
+      email: email,
+      password: "GoogleAuthUser@2026",
+      provider: "google",
+      picture: picture || "",
+      createdAt: new Date().toISOString()
+    };
+    users.push(existingUser);
+    saveRegisteredUsers(users);
+  }
+
+  setTimeout(() => {
+    window.closeGoogleModal();
+    window.authenticateUser({
+      name: existingUser.name || name,
+      email: existingUser.email || email,
+      picture: existingUser.picture || picture || '',
+      provider: 'google',
+      signedInAt: new Date().toISOString()
+    });
+
+    // If on login.html, redirect to index.html
+    if (typeof window !== 'undefined' && window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
+      const alertBox = document.getElementById('authAlert');
+      if (alertBox) {
+        alertBox.innerHTML = `✓ Welcome, <strong>${name}</strong>! Redirecting to studio...`;
+      }
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 700);
+    }
+  }, 250);
+};
+
+// Unified Entry Points for Google Authentication:
+// Always opens Google Account Chooser dialog so user can pick or enter THEIR account
+window.handleGoogleAuth = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  window.openGoogleModal(e);
+};
+
+window.signInWithGoogle = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  window.openGoogleModal(e);
+};
+
 
 // Central User Authentication & State Manager
 window.authenticateUser = function(userData) {
@@ -1391,10 +1375,11 @@ window.updateAuthUI = function(user) {
       }
     }
   } else {
-    // Logged out state
+    // Logged out state - Keep portal modal closed so visitors on any mobile/desktop can freely explore the website!
     if (authModal) {
-      authModal.classList.remove('auth-hidden');
-      authModal.style.display = 'flex';
+      authModal.classList.add('auth-hidden');
+      authModal.classList.remove('active');
+      authModal.style.display = 'none';
     }
 
     // Show Login button, hide User Name button
@@ -1580,16 +1565,31 @@ window.initAuthGate = function() {
   }
 };
 
-// Modal Dismiss
-window.unlockPortal = function() {
+// Auth Modal Open/Close Controls
+window.openAuthModal = function(view) {
+  const authModal = document.getElementById('authModal');
+  if (authModal) {
+    if (view && typeof window.switchAuthView === 'function') {
+      window.switchAuthView(view);
+    }
+    authModal.classList.remove('auth-hidden');
+    authModal.classList.add('active');
+    authModal.style.display = 'flex';
+  } else {
+    window.location.href = 'login.html' + (view === 'signup' ? '#signup' : '');
+  }
+};
+
+window.closeAuthModal = function() {
   const authModal = document.getElementById('authModal');
   if (authModal) {
     authModal.classList.add('auth-hidden');
-    setTimeout(() => {
-      authModal.style.display = 'none';
-    }, 300);
+    authModal.classList.remove('active');
+    authModal.style.display = 'none';
   }
 };
+
+window.unlockPortal = window.closeAuthModal;
 
 // Inline Form Switchers (index.html authModal)
 window.switchAuthView = function(view) {

@@ -36,8 +36,9 @@
   <div class="ambient-mesh"></div>
 
   <!-- Initial Authentication Portal Modal (Google / Email / Forgot Password) -->
-  <div id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <div id="authModal" class="auth-hidden" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <div class="auth-box">
+      <button type="button" class="auth-modal-close" onclick="closeAuthModal()" aria-label="Close">&times;</button>
       <div class="auth-header">
         <div class="auth-brand-wrap">
           <img src="assets/logo.png" alt="Ashraa Media" class="auth-brand-logo">
@@ -58,9 +59,6 @@
         </svg>
         <span>Continue with Google</span>
       </button>
-      <div style="text-align: center; margin-top: -6px; margin-bottom: 12px;">
-        <button type="button" class="auth-link" onclick="openGoogleModal(event)" style="font-size:0.75rem; color:#94a3b8; background:transparent; border:none; cursor:pointer;">Switch Google account</button>
-      </div>
 
       <div class="auth-divider">
         <span>or sign in with email</span>
@@ -485,28 +483,8 @@
     function handleGoogleAuth(e) {
       if (typeof window.handleGoogleAuth === 'function') {
         window.handleGoogleAuth(e);
-      } else {
-        const userData = {
-          name: 'Shilpi Thakur',
-          email: 'shilpithskur9b37@gmail.com',
-          provider: 'google',
-          picture: '',
-          signedInAt: new Date().toISOString()
-        };
-        try {
-          localStorage.setItem('ashraa_auth_user', JSON.stringify(userData));
-        } catch (err) {}
-        const authModal = document.getElementById('authModal');
-        if (authModal) {
-          authModal.classList.add('auth-hidden');
-          authModal.style.display = 'none';
-        }
-        const navLoginItem = document.getElementById('navLoginItem');
-        const navUserItem = document.getElementById('navUserItem');
-        const navUserName = document.getElementById('navUserName');
-        if (navLoginItem) navLoginItem.style.display = 'none';
-        if (navUserItem) navUserItem.style.display = 'inline-block';
-        if (navUserName) navUserName.textContent = 'Shilpi Thakur';
+      } else if (typeof window.openGoogleModal === 'function') {
+        window.openGoogleModal(e);
       }
     }
   </script>
