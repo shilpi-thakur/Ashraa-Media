@@ -1090,6 +1090,41 @@ function setupSupabaseAuthListener() {
   }
 }
 
+// Health Check Helper to Prevent Browser DNS Crash When Supabase Is Paused
+async function isSupabaseReachable() {
+  if (!SUPABASE_URL || !SUPABASE_URL.startsWith('http')) return false;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2800);
+    await fetch(`${SUPABASE_URL}/auth/v1/health`, {
+      method: 'GET',
+      mode: 'no-cors',
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Convenient In-Browser Configuration Helper
+window.configureSupabase = function() {
+  const currentUrl = localStorage.getItem('ashraa_supabase_url') || SUPABASE_URL;
+  const currentKey = localStorage.getItem('ashraa_supabase_anon_key') || SUPABASE_ANON_KEY;
+  
+  const newUrl = prompt("Enter your Supabase Project URL:\n(e.g. https://your-project-id.supabase.co)", currentUrl);
+  if (!newUrl) return;
+  
+  const newKey = prompt("Enter your Supabase 'anon public' API Key:\n(starts with eyJhbGci...)", currentKey);
+  if (!newKey) return;
+  
+  localStorage.setItem('ashraa_supabase_url', newUrl.trim());
+  localStorage.setItem('ashraa_supabase_anon_key', newKey.trim());
+  alert("✓ Supabase settings updated! Reloading studio...");
+  window.location.reload();
+};
+
 // Genuine Google OAuth Authentication
 window.signInWithGoogle = async function(e) {
   if (e) {
@@ -1099,7 +1134,33 @@ window.signInWithGoogle = async function(e) {
 
   const client = getSupabaseClient();
   if (!client || !client.auth) {
-    displayAuthAlert('error', 'Authentication server is not reachable. If your Supabase project is paused, please restore it in your Supabase dashboard and set your valid Anon key.');
+    displayAuthAlert('error', `⚠️ <strong>Supabase client not initialized.</strong><br>Please verify your Project URL & Anon Key.<br><button type="button" onclick="window.configureSupabase()" class="btn btn-secondary" style="margin-top:8px; padding:6px 12px; font-size:0.78rem;">Configure Supabase Keys</button>`);
+    return;
+  }
+
+  displayAuthAlert('info', '<span class="google-spinner"></span> Checking Supabase server connection...');
+
+  // Pre-flight DNS & Server Health Check
+  const reachable = await isSupabaseReachable();
+  if (!reachable) {
+    const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
+    displayAuthAlert('error', `
+      <div style="text-align:left;">
+        <strong>⚠️ Cannot reach your Supabase server (${SUPABASE_URL})</strong><br>
+        <span style="font-size:0.82rem; color:#fca5a5; display:block; margin:6px 0;">
+          This occurs because free Supabase projects <strong>pause automatically after 7 days of inactivity</strong>, temporarily removing their DNS IP.
+        </span>
+        <div style="margin-top:8px; font-size:0.82rem; line-height:1.5;">
+          <strong>Quick Fix in 60 seconds:</strong><br>
+          1. Open <a href="https://supabase.com/dashboard/project/${ref}" target="_blank" rel="noopener" style="color:#93c5fd; text-decoration:underline; font-weight:700;">supabase.com/dashboard</a> and click <strong>"Restore project"</strong>.<br>
+          2. Wait 1–2 minutes for the status to turn green.<br>
+          3. If you have a different active project URL or Anon key, click below:
+        </div>
+        <button type="button" onclick="window.configureSupabase()" class="btn btn-secondary" style="margin-top:10px; padding:6px 14px; font-size:0.8rem; background:#1e293b; color:#fff; border:1px solid #3b82f6; border-radius:6px; cursor:pointer;">
+          ⚙️ Update Supabase URL & Anon Key
+        </button>
+      </div>
+    `);
     return;
   }
 
