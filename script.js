@@ -13,24 +13,43 @@ const STUDIO_NAME     = "Ashraa Media";
 
 // Google OAuth Client ID (Optional for Google Cloud Console direct verification):
 // Paste your Web Client ID here (e.g. "123456789-abcdefg.apps.googleusercontent.com")
-window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || (typeof localStorage !== 'undefined' ? localStorage.getItem('ashraa_google_client_id') : '') || "";
+window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
 
-// Your Supabase Project Details (Optional)
-const SUPABASE_URL = "https://nbxmptemldnusvhbuaih.supabase.co";
+// ==========================================
+// SUPABASE CLIENT INITIALIZATION & CONFIG
+// ==========================================
+// To activate Supabase Auth:
+// 1. If paused, restore your project at: https://supabase.com/dashboard/project/nbxmptemldnusvhbuaih
+// 2. In Supabase Dashboard -> Project Settings -> API, copy your "anon public" key (starts with "eyJ...")
+const SUPABASE_URL = (typeof window !== 'undefined' && (window.SUPABASE_URL || localStorage.getItem('ashraa_supabase_url'))) || "https://nbxmptemldnusvhbuaih.supabase.co";
+const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && (window.SUPABASE_ANON_KEY || localStorage.getItem('ashraa_supabase_anon_key'))) || "sb_publishable_edVFMpyCnnpmf95F4Eyn9g_2fOBCrbP";
 
-// PASTE YOUR ANON KEY FROM YOUR .ENV FILE BETWEEN THE QUOTES BELOW:
-const SUPABASE_ANON_KEY = "sb_publishable_edVFMpyCnnpmf95F4Eyn9g_2fOBCrbP"; // Replace with your Supabase anon key
-
-// Initialize Supabase safely (avoid collision with window.supabase from CDN and prevent runtime crashes)
-const hasValidKey = Boolean(SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("YOUR_ANON_KEY"));
 let supabaseClient = null;
-try {
-  if (typeof window !== 'undefined' && window.supabase && hasValidKey) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  if (typeof window !== 'undefined' && window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("YOUR_ANON_KEY")) {
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+      window.supabaseClient = supabaseClient;
+      if (typeof setupSupabaseAuthListener === 'function') {
+        setupSupabaseAuthListener();
+      }
+    } catch (err) {
+      console.warn("Could not initialize Supabase client:", err);
+    }
   }
-} catch (err) {
-  console.warn("Could not initialize Supabase client:", err);
+  return supabaseClient;
 }
+
+// Initial client creation attempt
+getSupabaseClient();
 
 // Helper: Extract clean Google Drive ID from any URL or string
 function extractDriveId(input) {
@@ -971,207 +990,9 @@ window.closeMobileMenu = function() {
 };
 
 // ==========================================
-// 14. AUTHENTICATION & SECURITY SHIELD
+// 14. AUTHENTICATION & LOGIN GATE CONTROLLERS
 // ==========================================
 window.authCurrentView = 'login'; // 'login', 'signup', 'forgot'
-
-// 14.0 COMPREHENSIVE EMAIL VALIDATION & ANTI-FAKE SHIELD
-const DISPOSABLE_EMAIL_DOMAINS = new Set([
-  'mailinator.com', 'tempmail.com', 'temp-mail.org', 'temp-mail.io', '10minutemail.com',
-  'guerrillamail.com', 'guerrillamail.biz', 'guerrillamail.info', 'guerrillamail.net',
-  'guerrillamail.org', 'guerrillamailblock.com', 'sharklasers.com', 'grr.la', 'pokemail.net',
-  'spam4.me', 'yopmail.com', 'yopmail.fr', 'yopmail.net', 'cool.fr.nf', 'courriel.fr.nf',
-  'moncourrier.fr.nf', 'monemail.fr.nf', 'monmail.fr.nf', 'trashmail.com', 'trashmail.net',
-  'trashmail.org', 'trashmail.me', 'throwawaymail.com', 'fakemailgenerator.com',
-  'dispostable.com', 'getairmail.com', 'inboxbear.com', 'dropmail.me', 'mohmal.com',
-  'mytemp.email', 'nada.ltd', 'tempail.com', 'generator.email', 'crazymailing.com',
-  'burnermail.io', 'maildrop.cc', 'fakeinbox.com', 'emailondeck.com', 'mytrashmail.com',
-  'disposablemail.com', 'tempmailaddress.com', 'tempr.email', 'discard.email',
-  'discardmail.com', 'spambox.us', 'mytempemail.com', 'throwawayemail.com', 'mailcatch.com',
-  'boun.cr', 'inboxkitten.com', 'harakirimail.com', 'getnada.com', 'abcvg.com',
-  'wuzupworld.com', 'zetmail.com', 'tafmail.com', 'tmail.ws', 'mailpoof.com',
-  'minuteinbox.com', 'chacuo.net', 'trash-mail.com', 'mailnull.com', 'spamgourmet.com',
-  'jetable.org', 'mailexpire.com', 'anonymbox.com', 'temporary-mail.net', 'boximail.com',
-  'byom.de', 'dayrep.com', 'einrot.com', 'fleckens.com', 'gustr.com', 'jourrapide.com',
-  'rhyta.com', 'superrito.com', 'teleworm.us', 'armyspy.com', 'cuvox.de', 'trashymail.com'
-]);
-
-const FAKE_LOCAL_PARTS = new Set([
-  'test', 'testing', 'fake', 'asdf', 'asdfgh', 'qwer', 'qwerty', 'user', 'sample',
-  'dummy', 'nobody', 'noemail', 'none', '123', '1234', '12345', '123456', 'abc',
-  'abcd', 'xyz', 'temp', 'demo', 'test1', 'test2', 'null', 'undefined', 'void',
-  'fakeuser', 'fakemail', 'spam', 'admin', 'administrator', 'root'
-]);
-
-const FAKE_DOMAINS = new Set([
-  'test.com', 'example.com', 'example.org', 'example.net', 'fake.com', 'asdf.com',
-  'xyz.com', 'abc.com', 'dummy.com', 'invalid.com', 'sample.com', 'email.com',
-  'mail.com', 'domain.com', 'site.com', 'somedomain.com', 'test.org', 'fake.org',
-  'notreal.com', 'myfake.com'
-]);
-
-const COMMON_DOMAIN_TYPOS = {
-  'gnail.com': 'gmail.com',
-  'gmaill.com': 'gmail.com',
-  'gmai.com': 'gmail.com',
-  'gmil.com': 'gmail.com',
-  'gmal.com': 'gmail.com',
-  'gmaik.com': 'gmail.com',
-  'gmial.com': 'gmail.com',
-  'gmajl.com': 'gmail.com',
-  'gmaol.com': 'gmail.com',
-  'gamil.com': 'gmail.com',
-  'gmeil.com': 'gmail.com',
-  'yaho.com': 'yahoo.com',
-  'yahooo.com': 'yahoo.com',
-  'yaho.co': 'yahoo.com',
-  'yhaoo.com': 'yahoo.com',
-  'hotmial.com': 'hotmail.com',
-  'hotmaill.com': 'hotmail.com',
-  'hotmai.com': 'hotmail.com',
-  'outlok.com': 'outlook.com',
-  'outloo.com': 'outlook.com',
-  'outlk.com': 'outlook.com',
-  'icoud.com': 'icloud.com',
-  'iclod.com': 'icloud.com'
-};
-
-window.validateEmailDetailed = function(email) {
-  if (!email || typeof email !== 'string') {
-    return { isValid: false, message: 'Please enter an email address.' };
-  }
-  email = email.trim().toLowerCase();
-
-  if (email.length < 6) {
-    return { isValid: false, message: 'Email address is too short (minimum 6 characters).' };
-  }
-  if (email.length > 254) {
-    return { isValid: false, message: 'Email address exceeds maximum length.' };
-  }
-
-  // RFC 5322 regex
-  const regex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
-  if (!regex.test(email)) {
-    return { isValid: false, message: 'Invalid email format (e.g. yourname@gmail.com).' };
-  }
-  if (email.includes('..')) {
-    return { isValid: false, message: 'Email cannot contain consecutive dots (..).' };
-  }
-
-  const parts = email.split('@');
-  if (parts.length !== 2) {
-    return { isValid: false, message: 'Invalid email structure.' };
-  }
-  const [localPart, domain] = parts;
-
-  // Domain structure checks
-  const domainParts = domain.split('.');
-  if (domainParts.length < 2) {
-    return { isValid: false, message: 'Email domain must contain a valid extension (e.g. .com).' };
-  }
-  const tld = domainParts[domainParts.length - 1];
-  if (tld.length < 2 || !/^[a-z]+$/i.test(tld)) {
-    return { isValid: false, message: 'Domain extension must contain at least 2 letters (e.g. .com, .in).' };
-  }
-
-  // Common typo suggestion
-  if (COMMON_DOMAIN_TYPOS[domain]) {
-    const suggested = localPart + '@' + COMMON_DOMAIN_TYPOS[domain];
-    return {
-      isValid: false,
-      isTypo: true,
-      suggestedEmail: suggested,
-      message: `Did you mean <span class="suggestion-link" onclick="window.applyEmailSuggestion('${suggested}')">${suggested}</span>?`
-    };
-  }
-
-  // Disposable domain check
-  if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
-    return { isValid: false, message: `Temporary/disposable email domains (${domain}) are not permitted.` };
-  }
-
-  // Fake domain check
-  if (FAKE_DOMAINS.has(domain)) {
-    return { isValid: false, message: `Please enter a real domain; "${domain}" is not permitted.` };
-  }
-
-  // Placeholder username check
-  if (FAKE_LOCAL_PARTS.has(localPart)) {
-    return { isValid: false, message: `"${localPart}" is a placeholder name. Please use your genuine email address.` };
-  }
-
-  // Repetitive characters pattern: aaaaa@ or 11111@
-  if (/^(.)\1{4,}@/.test(email)) {
-    return { isValid: false, message: 'Please enter a genuine, active email address.' };
-  }
-
-  return { isValid: true, email: email, domain: domain, user: localPart };
-};
-
-// 1-Click apply typo suggestion
-window.applyEmailSuggestion = function(suggested) {
-  const activeInput = document.activeElement && document.activeElement.type === 'email' ? document.activeElement : null;
-  const targetInput = activeInput || document.querySelector('#signUpEmail, #signInEmail, #authEmail, #forgotEmail');
-  if (targetInput) {
-    targetInput.value = suggested;
-    targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-    targetInput.focus();
-  }
-};
-
-// Auto-bind live validation feedback to all email inputs on current page
-window.setupLiveEmailValidation = function() {
-  const emailInputs = document.querySelectorAll('input[type="email"]');
-  emailInputs.forEach(input => {
-    if (input.dataset.validationBound) return;
-    input.dataset.validationBound = 'true';
-
-    // Find or create hint element
-    let hintEl = document.getElementById(input.id + 'Hint');
-    if (!hintEl) {
-      hintEl = document.createElement('div');
-      hintEl.className = 'email-hint';
-      hintEl.id = (input.id || 'email_' + Math.random().toString(36).substr(2, 5)) + 'Hint';
-      input.parentNode.appendChild(hintEl);
-    }
-
-    let debounceTimer = null;
-    const runValidation = () => {
-      const val = input.value.trim();
-      if (!val) {
-        hintEl.className = 'email-hint';
-        hintEl.innerHTML = '';
-        input.classList.remove('input-valid', 'input-invalid');
-        return;
-      }
-
-      const res = window.validateEmailDetailed(val);
-      if (res.isValid) {
-        hintEl.className = 'email-hint valid show';
-        hintEl.innerHTML = '&#10003; Valid email address';
-        input.classList.remove('input-invalid');
-        input.classList.add('input-valid');
-      } else if (res.isTypo) {
-        hintEl.className = 'email-hint typo show';
-        hintEl.innerHTML = res.message;
-        input.classList.remove('input-valid');
-        input.classList.add('input-invalid');
-      } else {
-        hintEl.className = 'email-hint invalid show';
-        hintEl.innerHTML = '&#9888; ' + res.message;
-        input.classList.remove('input-valid');
-        input.classList.add('input-invalid');
-      }
-    };
-
-    input.addEventListener('input', () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(runValidation, 200);
-    });
-
-    input.addEventListener('blur', runValidation);
-  });
-};
 
 // Dynamically load Google Identity Services (GIS) SDK
 function loadGoogleIdentityServices() {
@@ -1182,11 +1003,10 @@ function loadGoogleIdentityServices() {
   script.async = true;
   script.defer = true;
   script.onload = () => {
-    const clientId = window.getGoogleClientId();
-    if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
+    if (window.GOOGLE_CLIENT_ID && window.google && window.google.accounts && window.google.accounts.id) {
       try {
         window.google.accounts.id.initialize({
-          client_id: clientId,
+          client_id: window.GOOGLE_CLIENT_ID,
           callback: handleGoogleGsiResponse
         });
       } catch (err) {
@@ -1212,7 +1032,6 @@ function handleGoogleGsiResponse(response) {
         email: payload.email,
         picture: payload.picture || '',
         provider: 'google',
-        emailVerified: true,
         signedInAt: new Date().toISOString()
       });
     } catch (e) {
@@ -1222,42 +1041,8 @@ function handleGoogleGsiResponse(response) {
 }
 
 // ==========================================
-// 14.1 USER ACCOUNTS DATABASE & STATE HELPERS
+// 14.1 SUPABASE AUTHENTICATION ENGINE
 // ==========================================
-const DEFAULT_REGISTERED_USERS = [
-  {
-    name: "Shilpi Thakur",
-    email: "shilpithskur9b37@gmail.com",
-    password: "Password@123",
-    provider: "google",
-    createdAt: "2026-09-01T00:00:00.000Z"
-  },
-  {
-    name: "Ashraa Studio Admin",
-    email: "admin@ashraamedia.com",
-    password: "Admin@1234",
-    provider: "email",
-    createdAt: "2026-09-01T00:00:00.000Z"
-  }
-];
-
-function getRegisteredUsers() {
-  const raw = localStorage.getItem('ashraa_registered_users');
-  if (!raw) {
-    localStorage.setItem('ashraa_registered_users', JSON.stringify(DEFAULT_REGISTERED_USERS));
-    return [...DEFAULT_REGISTERED_USERS];
-  }
-  try {
-    const list = JSON.parse(raw);
-    return Array.isArray(list) ? list : [...DEFAULT_REGISTERED_USERS];
-  } catch (e) {
-    return [...DEFAULT_REGISTERED_USERS];
-  }
-}
-
-function saveRegisteredUsers(users) {
-  localStorage.setItem('ashraa_registered_users', JSON.stringify(users));
-}
 
 function displayAuthAlert(type, message) {
   // 1. On login.html (#authAlert)
@@ -1271,423 +1056,80 @@ function displayAuthAlert(type, message) {
   // 2. On index.html / other pages (#authMsg)
   const authMsg = document.getElementById('authMsg');
   if (authMsg) {
-    authMsg.className = `auth-msg ${type === 'error' ? 'error' : 'success'}`;
+    authMsg.className = `auth-msg ${type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info')}`;
     authMsg.innerHTML = message;
     authMsg.style.display = 'block';
   }
 }
 
-// Device-Specific Remembered Google Accounts (Stored per device in localStorage)
-function getDeviceGoogleAccounts() {
-  try {
-    const raw = localStorage.getItem('ashraa_device_google_accounts');
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
+// Supabase Real-time Auth State Synchronizer
+function setupSupabaseAuthListener() {
+  const client = getSupabaseClient();
+  if (client && client.auth && !window._supabaseAuthListenerAttached) {
+    window._supabaseAuthListenerAttached = true;
+    client.auth.onAuthStateChange((event, session) => {
+      console.log("[Supabase Auth]", event, session ? session.user?.email : "No session");
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && session && session.user) {
+        const u = session.user;
+        const profile = {
+          id: u.id,
+          name: u.user_metadata?.full_name || u.user_metadata?.name || (u.email ? u.email.split('@')[0] : 'Creator'),
+          email: u.email,
+          picture: u.user_metadata?.avatar_url || u.user_metadata?.picture || '',
+          provider: u.app_metadata?.provider || 'supabase',
+          signedInAt: new Date().toISOString()
+        };
+        window.authenticateUser(profile);
+      } else if (event === 'SIGNED_OUT') {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('ashraa_auth_user');
+        }
+        window.updateAuthUI(null);
+      }
+    });
   }
 }
 
-function saveDeviceGoogleAccount(account) {
-  if (!account || !account.email) return;
-  const list = getDeviceGoogleAccounts().filter(a => a.email.toLowerCase() !== account.email.toLowerCase());
-  list.unshift({
-    name: account.name || account.email.split('@')[0],
-    email: account.email.toLowerCase()
-  });
-  try {
-    localStorage.setItem('ashraa_device_google_accounts', JSON.stringify(list.slice(0, 5)));
-  } catch (e) {}
-}
-
-// Google Client ID resolution (from window or localStorage)
-window.getGoogleClientId = function() {
-  if (window.GOOGLE_CLIENT_ID && window.GOOGLE_CLIENT_ID.includes('.apps.googleusercontent.com')) {
-    return window.GOOGLE_CLIENT_ID;
-  }
-  try {
-    const saved = localStorage.getItem('ashraa_google_client_id');
-    if (saved && saved.includes('.apps.googleusercontent.com')) return saved;
-  } catch (e) {}
-  return "";
-};
-
-window.saveGoogleClientId = function(newId) {
-  newId = (newId || '').trim();
-  if (newId) {
-    localStorage.setItem('ashraa_google_client_id', newId);
-    window.GOOGLE_CLIENT_ID = newId;
-    loadGoogleIdentityServices();
-    return true;
-  }
-  return false;
-};
-
-// Toggle developer configuration panel for Google OAuth Client ID
-window.toggleGoogleConfigPanel = function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  const panel = document.getElementById('googleConfigPanel');
-  if (panel) panel.classList.toggle('open');
-};
-
-window.handleSaveGoogleConfig = function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  const input = document.getElementById('googleClientIdInput');
-  const alertEl = document.getElementById('googleModalAlert');
-  const val = input ? input.value.trim() : '';
-  if (!val || !val.includes('.apps.googleusercontent.com')) {
-    if (alertEl) {
-      alertEl.style.display = 'block';
-      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
-      alertEl.style.color = '#f87171';
-      alertEl.textContent = 'Please enter a valid Google OAuth Web Client ID (ends with .apps.googleusercontent.com).';
-    }
-    return;
-  }
-  window.saveGoogleClientId(val);
-  if (alertEl) {
-    alertEl.style.display = 'block';
-    alertEl.style.background = 'rgba(34, 197, 94, 0.15)';
-    alertEl.style.color = '#15803d';
-    alertEl.textContent = '✓ Google Client ID saved! Live Google OAuth popups are now active.';
-  }
-  setTimeout(() => {
-    window.closeGoogleModal();
-  }, 1200);
-};
-
-// Render dynamic Google Account Chooser & Verification Portal
-function renderGoogleModalContent() {
-  const modal = document.getElementById('googleAccountModal');
-  if (!modal) return;
-
-  const deviceAccounts = getDeviceGoogleAccounts();
-  const hasAccounts = deviceAccounts.length > 0;
-  const configuredClientId = window.getGoogleClientId();
-
-  modal.innerHTML = `
-    <div class="google-modal-box">
-      <button type="button" class="google-modal-close" onclick="closeGoogleModal()" aria-label="Close">&times;</button>
-      <div class="google-modal-header">
-        <svg class="google-modal-logo" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-        </svg>
-        <h3 class="google-modal-title" id="googleModalTitle">${hasAccounts ? 'Verify Google Account' : 'Sign in with Google'}</h3>
-        <p class="google-modal-subtitle">to continue securely to <strong style="color:#1f1f1f;">Ashraa Media</strong></p>
-        <div style="margin-top:6px;">
-          <span class="google-verified-chip">
-            <svg viewBox="0 0 24 24" width="12" height="12"><path fill="#1a73e8" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-            Google Identity Services
-          </span>
-        </div>
-      </div>
-
-      <div id="googleModalAlert" style="display:none; font-size:0.84rem; padding:10px 12px; border-radius:8px; margin-bottom:12px; text-align:center;"></div>
-
-      ${hasAccounts ? `
-        <!-- Device Saved Verified Google Accounts List -->
-        <div class="google-account-list" id="googleAccountList">
-          ${deviceAccounts.map(acc => {
-            const initial = (acc.name || acc.email).charAt(0).toUpperCase();
-            const safeName = (acc.name || acc.email).replace(/'/g, "\\'");
-            const safeEmail = acc.email.replace(/'/g, "\\'");
-            return `
-              <button type="button" class="google-account-item" onclick="selectGoogleAccount('${safeName}', '${safeEmail}')">
-                <div class="google-account-avatar">${initial}</div>
-                <div class="google-account-info">
-                  <div class="google-account-name">${acc.name}</div>
-                  <div class="google-account-email">${acc.email}</div>
-                </div>
-                <span class="google-account-arrow">&rsaquo;</span>
-              </button>
-            `;
-          }).join('')}
-
-          <button type="button" class="google-custom-trigger" onclick="toggleCustomGoogleAccount(event)">
-            <div class="google-account-avatar" style="background:#f1f3f4; color:#1a73e8; font-weight:700;">+</div>
-            <div class="google-account-info">
-              <div class="google-account-name" style="color:#1a73e8; font-weight:600;">Use another Google account</div>
-            </div>
-            <span class="google-account-arrow" style="color:#1a73e8;">&rsaquo;</span>
-          </button>
-        </div>
-      ` : ''}
-
-      <!-- Custom Google Email Input Form (Visible directly if no accounts on device, or toggled) -->
-      <form id="googleCustomForm" class="google-custom-form ${hasAccounts ? '' : 'active'}" style="display: ${hasAccounts ? 'none' : 'block'};" onsubmit="handleGoogleDirectSubmit(event)">
-        <div style="margin-bottom: 12px;">
-          <label for="googleAuthEmail" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Google Account Email (@gmail.com)</label>
-          <input type="email" id="googleAuthEmail" class="google-custom-input" placeholder="e.g. yourname@gmail.com" required autocomplete="email" style="margin-bottom:0;" />
-          <div class="email-hint" id="googleAuthEmailHint"></div>
-        </div>
-        <div style="margin-bottom: 14px;">
-          <label for="googleAuthName" style="display:block; font-size:0.8rem; color:#5f6368; margin-bottom:4px; font-weight:600;">Your Full Name</label>
-          <input type="text" id="googleAuthName" class="google-custom-input" placeholder="e.g. Your Name" style="margin-bottom:0;" />
-        </div>
-        <button type="submit" id="btnGoogleSubmit" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px 12px; font-size:0.9rem; font-weight:600; background:#1a73e8; border-color:#1a73e8; color:#fff; border-radius:8px; cursor:pointer;">
-          Verify with Google Identity &rarr;
-        </button>
-      </form>
-
-      <div class="google-modal-footer">
-        🔒 Google verifies your identity and shares your verified email with Ashraa Media.
-        <div style="margin-top: 8px;">
-          <button type="button" class="google-client-config-btn" onclick="toggleGoogleConfigPanel(event)">
-            ⚙ Developer Settings: ${configuredClientId ? 'Change Google Client ID' : 'Link Google Cloud Client ID'}
-          </button>
-          <div class="google-client-config-panel" id="googleConfigPanel">
-            <p style="margin: 0 0 6px; color: #444; font-weight: 600;">Google OAuth Web Client ID:</p>
-            <input type="text" id="googleClientIdInput" value="${configuredClientId}" placeholder="xxxx.apps.googleusercontent.com" style="width:100%; padding:6px 8px; border:1px solid #ccc; border-radius:4px; font-size:0.75rem; margin-bottom:6px; box-sizing:border-box;">
-            <button type="button" onclick="handleSaveGoogleConfig(event)" style="background:#1a73e8; color:#fff; border:none; padding:5px 10px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:600;">Save & Enable Direct Popup</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// Ensure the Google Account Modal exists in DOM
-function ensureGoogleModal() {
-  let modal = document.getElementById('googleAccountModal');
-  if (modal) return modal;
-
-  modal = document.createElement('div');
-  modal.className = 'google-modal';
-  modal.id = 'googleAccountModal';
-  modal.setAttribute('role', 'dialog');
-  modal.setAttribute('aria-modal', 'true');
-  modal.setAttribute('aria-labelledby', 'googleModalTitle');
-
-  document.body.appendChild(modal);
-
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) window.closeGoogleModal();
-  });
-
-  return modal;
-}
-
-// Toggle "Use another Google account" input
-window.toggleCustomGoogleAccount = function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  const form = document.getElementById('googleCustomForm');
-  if (!form) return;
-  const isShown = form.classList.contains('active') && form.style.display === 'block';
-  if (isShown) {
-    form.classList.remove('active');
-    form.style.display = 'none';
-  } else {
-    form.classList.add('active');
-    form.style.display = 'block';
-    const emailInput = document.getElementById('googleAuthEmail');
-    if (emailInput) setTimeout(() => emailInput.focus(), 60);
-  }
-};
-
-// Google Modal Open Action - Always prompts user to choose/enter account
-window.openGoogleModal = function(e) {
+// Genuine Google OAuth Authentication
+window.signInWithGoogle = async function(e) {
   if (e) {
     if (e.preventDefault) e.preventDefault();
     if (e.stopPropagation) e.stopPropagation();
   }
-  const modal = ensureGoogleModal();
-  renderGoogleModalContent();
 
-  if (modal) {
-    modal.classList.add('active');
-    modal.style.display = 'flex';
-    const emailInput = document.getElementById('googleAuthEmail');
-    if (emailInput && (!getDeviceGoogleAccounts().length || emailInput.offsetParent !== null)) {
-      setTimeout(() => emailInput.focus(), 60);
-    }
-  }
-
-  // Setup live validation on newly rendered Google input
-  if (typeof window.setupLiveEmailValidation === 'function') {
-    window.setupLiveEmailValidation();
-  }
-};
-
-window.closeGoogleModal = function() {
-  const modal = document.getElementById('googleAccountModal');
-  if (modal) {
-    modal.classList.remove('active');
-    modal.style.display = 'none';
-  }
-};
-
-// Direct Submit for Custom Google Email
-window.handleGoogleDirectSubmit = function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  const emailInput = document.getElementById('googleAuthEmail');
-  const nameInput = document.getElementById('googleAuthName');
-  const alertEl = document.getElementById('googleModalAlert');
-  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-  const nameVal = nameInput ? nameInput.value.trim() : '';
-
-  // 1. Email format and anti-fake validation
-  const validation = window.validateEmailDetailed(email);
-  if (!validation.isValid) {
-    if (alertEl) {
-      alertEl.style.display = 'block';
-      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
-      alertEl.style.color = '#f87171';
-      alertEl.innerHTML = validation.message;
-    }
+  const client = getSupabaseClient();
+  if (!client || !client.auth) {
+    displayAuthAlert('error', 'Authentication server is not reachable. If your Supabase project is paused, please restore it in your Supabase dashboard and set your valid Anon key.');
     return;
   }
 
-  // 2. Strict Google Domain Check: must be gmail.com, googlemail.com, or genuine non-disposable domain
-  const domain = email.split('@')[1];
-  const isGoogleDomain = domain === 'gmail.com' || domain === 'googlemail.com';
-  if (!isGoogleDomain && DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
-    if (alertEl) {
-      alertEl.style.display = 'block';
-      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
-      alertEl.style.color = '#f87171';
-      alertEl.textContent = 'Google Identity Services requires a genuine Google account (@gmail.com).';
-    }
-    return;
-  }
+  displayAuthAlert('info', '<span class="google-spinner"></span> Connecting to Google Authentication...');
 
-  let resolvedName = nameVal;
-  if (!resolvedName) {
-    const defaultName = email.split('@')[0].replace(/[._-]/g, ' ');
-    resolvedName = defaultName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  }
+  try {
+    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html');
+    const redirectUrl = window.location.origin + (isLoginPage ? window.location.pathname : '/login.html');
 
-  window.verifyGoogleAccount(resolvedName, email);
-};
-
-// Authentic Google 2-Step Verification Handshake
-window.verifyGoogleAccount = function(name, email, picture) {
-  name = (name || 'Google Creator').trim();
-  email = (email || '').trim().toLowerCase();
-
-  const alertEl = document.getElementById('googleModalAlert');
-  if (alertEl) {
-    alertEl.style.display = 'block';
-    alertEl.style.background = '#e8f0fe';
-    alertEl.style.color = '#1a73e8';
-    alertEl.innerHTML = `<span class="google-spinner"></span> Connecting to Google Identity Services...`;
-  }
-
-  // Step 1: Handshake
-  setTimeout(() => {
-    if (alertEl) {
-      alertEl.innerHTML = `<span class="google-spinner"></span> Verifying Google credentials and identity security token...`;
-    }
-
-    // Step 2: Verification confirmed
-    setTimeout(() => {
-      if (alertEl) {
-        alertEl.style.background = 'rgba(34, 197, 94, 0.15)';
-        alertEl.style.color = '#15803d';
-        alertEl.innerHTML = `✓ Google identity verified: <strong>${name}</strong> (${email})`;
-      }
-
-      saveDeviceGoogleAccount({ name, email });
-
-      const users = getRegisteredUsers();
-      let existingUser = users.find(u => u.email.toLowerCase() === email);
-      if (!existingUser) {
-        existingUser = {
-          name: name,
-          email: email,
-          password: "GoogleAuthUser@2026",
-          provider: "google",
-          emailVerified: true,
-          picture: picture || "",
-          createdAt: new Date().toISOString()
-        };
-        users.push(existingUser);
-        saveRegisteredUsers(users);
-      } else {
-        existingUser.emailVerified = true;
-        saveRegisteredUsers(users);
-      }
-
-      setTimeout(() => {
-        window.closeGoogleModal();
-        window.authenticateUser({
-          name: existingUser.name || name,
-          email: existingUser.email || email,
-          picture: existingUser.picture || picture || '',
-          provider: 'google',
-          emailVerified: true,
-          signedInAt: new Date().toISOString()
-        });
-
-        if (typeof window !== 'undefined' && window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
-          const alertBox = document.getElementById('authAlert');
-          if (alertBox) {
-            alertBox.innerHTML = `✓ Google Verified! Welcome, <strong>${name}</strong>! Redirecting to studio...`;
-          }
-          setTimeout(() => {
-            window.location.href = 'index.html';
-          }, 600);
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
         }
-      }, 500);
-    }, 700);
-  }, 500);
-};
+      }
+    });
 
-window.selectGoogleAccount = function(name, email, picture) {
-  window.verifyGoogleAccount(name, email, picture);
-};
-
-// Unified Entry Points for Google Authentication
-window.signInWithGoogle = function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-
-  const clientId = window.getGoogleClientId();
-
-  // 1. If Google GIS token client is initialized (real Google OAuth popup)
-  if (clientId && window.google && window.google.accounts && window.google.accounts.oauth2) {
-    try {
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'email profile openid',
-        callback: async (tokenResponse) => {
-          if (tokenResponse && tokenResponse.access_token) {
-            try {
-              const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-              });
-              if (res.ok) {
-                const profile = await res.json();
-                window.authenticateUser({
-                  name: profile.name || profile.given_name || 'Google Creator',
-                  email: profile.email,
-                  picture: profile.picture || '',
-                  provider: 'google',
-                  emailVerified: true,
-                  signedInAt: new Date().toISOString()
-                });
-                return;
-              }
-            } catch (err) {
-              console.warn("Could not fetch Google userinfo:", err);
-            }
-          }
-        }
-      });
-      tokenClient.requestAccessToken({ prompt: 'select_account' });
-      return;
-    } catch (err) {
-      console.warn("Direct Google OAuth error, falling back to verified Google modal:", err);
+    if (error) {
+      displayAuthAlert('error', `Google Authentication failed: ${error.message}`);
     }
+  } catch (err) {
+    console.error("Google sign-in error:", err);
+    displayAuthAlert('error', `Google Authentication error: ${err.message || 'Unable to connect to Google OAuth'}`);
   }
-
-  // 2. Open Authentic Verified Google Identity Modal
-  window.openGoogleModal(e);
 };
 
-window.handleGoogleAuth = function(e) {
-  window.signInWithGoogle(e);
-};
+window.handleGoogleAuth = window.signInWithGoogle;
 
 
 // Central User Authentication & State Manager
@@ -1921,9 +1363,19 @@ window.updateAuthUI = function(user) {
 };
 
 // Sign Out Handler
-window.signOutUser = function(e) {
+window.signOutUser = async function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.closeUserDropdown();
+
+  const client = getSupabaseClient();
+  if (client && client.auth) {
+    try {
+      await client.auth.signOut();
+    } catch (err) {
+      console.warn("Supabase sign out error:", err);
+    }
+  }
+
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('ashraa_auth_user');
   }
@@ -1945,254 +1397,8 @@ window.signOutUser = function(e) {
 
 window.handleSignOut = window.signOutUser;
 
-// ==========================================
-// 14.3 EMAIL VERIFICATION (OTP) & SECURE AUTH
-// ==========================================
-let pendingEmailRegistration = null;
-let resendInterval = null;
-
-window.startEmailVerification = function(email, password, name) {
-  // Generate authentic 6-digit verification code
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  pendingEmailRegistration = {
-    name: name,
-    email: email,
-    password: password,
-    code: code,
-    expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
-  };
-
-  // Switch to OTP view on login.html if available
-  const authMainView = document.getElementById('authMainView');
-  const emailVerifyView = document.getElementById('emailVerifyView');
-  const targetEmailEl = document.getElementById('verifyTargetEmail');
-  const verifyAlert = document.getElementById('verifyAlert');
-
-  if (emailVerifyView && authMainView) {
-    authMainView.style.display = 'none';
-    emailVerifyView.style.display = 'block';
-    if (targetEmailEl) targetEmailEl.textContent = email;
-    if (verifyAlert) {
-      verifyAlert.className = 'auth-alert info';
-      verifyAlert.innerHTML = `📧 Security Code Sent to <strong>${email}</strong>:<br><span style="display:inline-block; margin-top:4px; font-weight:700; background:rgba(255,255,255,0.18); padding:3px 10px; border-radius:6px; letter-spacing:2px; font-size:1.1rem; color:#fff;">${code}</span>`;
-      verifyAlert.style.display = 'block';
-    }
-
-    // Setup OTP inputs auto-advance
-    window.setupOtpInputListeners();
-    window.startResendCooldown();
-  } else {
-    // If on authModal (index.html / subpages), prompt verification inside modal
-    window.promptModalOtpVerification(code);
-  }
-};
-
-window.setupOtpInputListeners = function() {
-  const digits = document.querySelectorAll('#otpContainer .otp-digit');
-  digits.forEach((digit, idx) => {
-    digit.value = '';
-    digit.classList.remove('filled');
-
-    digit.oninput = (e) => {
-      const val = digit.value.replace(/[^0-9]/g, '');
-      digit.value = val ? val.slice(-1) : '';
-      if (digit.value) {
-        digit.classList.add('filled');
-        if (idx < digits.length - 1) {
-          digits[idx + 1].focus();
-        }
-      } else {
-        digit.classList.remove('filled');
-      }
-    };
-
-    digit.onkeydown = (e) => {
-      if (e.key === 'Backspace' && !digit.value && idx > 0) {
-        digits[idx - 1].focus();
-      }
-    };
-
-    digit.onpaste = (e) => {
-      e.preventDefault();
-      const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
-      if (paste) {
-        paste.slice(0, 6).split('').forEach((char, i) => {
-          if (digits[i]) {
-            digits[i].value = char;
-            digits[i].classList.add('filled');
-          }
-        });
-        const nextIdx = Math.min(paste.length, digits.length - 1);
-        digits[nextIdx].focus();
-      }
-    };
-  });
-  if (digits[0]) setTimeout(() => digits[0].focus(), 60);
-};
-
-window.confirmEmailVerification = function(enteredCode) {
-  enteredCode = (enteredCode || '').trim();
-  const alertEl = document.getElementById('verifyAlert') || document.getElementById('authAlert');
-
-  if (!pendingEmailRegistration) {
-    if (alertEl) {
-      alertEl.className = 'auth-alert error';
-      alertEl.textContent = 'Session expired. Please restart registration.';
-      alertEl.style.display = 'block';
-    }
-    return;
-  }
-
-  if (Date.now() > pendingEmailRegistration.expiresAt) {
-    if (alertEl) {
-      alertEl.className = 'auth-alert error';
-      alertEl.textContent = 'Verification code has expired. Please click Resend Code.';
-      alertEl.style.display = 'block';
-    }
-    return;
-  }
-
-  if (enteredCode !== pendingEmailRegistration.code) {
-    if (alertEl) {
-      alertEl.className = 'auth-alert error';
-      alertEl.textContent = 'Incorrect verification code. Please check the code and try again.';
-      alertEl.style.display = 'block';
-    }
-    return;
-  }
-
-  // Verification succeeded! Save user in registered database
-  const users = getRegisteredUsers();
-  const newUser = {
-    name: pendingEmailRegistration.name,
-    email: pendingEmailRegistration.email,
-    password: pendingEmailRegistration.password,
-    provider: 'email',
-    emailVerified: true,
-    verifiedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString()
-  };
-  users.push(newUser);
-  saveRegisteredUsers(users);
-
-  if (alertEl) {
-    alertEl.className = 'auth-alert success';
-    alertEl.innerHTML = `✓ Email verified successfully! Welcome to Ashraa Media, <strong>${newUser.name}</strong>.`;
-    alertEl.style.display = 'block';
-  }
-
-  const registeredData = { ...pendingEmailRegistration };
-  pendingEmailRegistration = null;
-
-  setTimeout(() => {
-    window.authenticateUser(newUser);
-    if (window.location && (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html'))) {
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 600);
-    }
-  }, 400);
-};
-
-window.resendVerificationCode = function() {
-  if (!pendingEmailRegistration) {
-    displayAuthAlert('error', 'No pending registration session found.');
-    return;
-  }
-  const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-  pendingEmailRegistration.code = newCode;
-  pendingEmailRegistration.expiresAt = Date.now() + 10 * 60 * 1000;
-
-  const alertEl = document.getElementById('verifyAlert') || document.getElementById('authAlert');
-  if (alertEl) {
-    alertEl.className = 'auth-alert info';
-    alertEl.innerHTML = `📧 New verification code sent to <strong>${pendingEmailRegistration.email}</strong>:<br><span style="display:inline-block; margin-top:4px; font-weight:700; background:rgba(255,255,255,0.18); padding:3px 10px; border-radius:6px; letter-spacing:2px; font-size:1.1rem; color:#fff;">${newCode}</span>`;
-    alertEl.style.display = 'block';
-  }
-
-  window.setupOtpInputListeners();
-  window.startResendCooldown();
-};
-
-window.cancelEmailVerification = function() {
-  pendingEmailRegistration = null;
-  const authMainView = document.getElementById('authMainView');
-  const emailVerifyView = document.getElementById('emailVerifyView');
-  if (authMainView && emailVerifyView) {
-    emailVerifyView.style.display = 'none';
-    authMainView.style.display = 'block';
-    if (typeof switchAuthTab === 'function') {
-      switchAuthTab('signup');
-    }
-  }
-};
-
-window.startResendCooldown = function() {
-  const btn = document.getElementById('btnResendCode');
-  if (!btn) return;
-  let remaining = 30;
-  btn.disabled = true;
-  btn.style.opacity = '0.5';
-  btn.style.pointerEvents = 'none';
-  btn.textContent = `Resend Code (${remaining}s)`;
-
-  clearInterval(resendInterval);
-  resendInterval = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(resendInterval);
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      btn.style.pointerEvents = 'auto';
-      btn.textContent = 'Resend Code';
-    } else {
-      btn.textContent = `Resend Code (${remaining}s)`;
-    }
-  }, 1000);
-};
-
-// Modal-based OTP verification prompt for index/subpages
-window.promptModalOtpVerification = function(code) {
-  const modal = document.getElementById('authModal');
-  const loginForm = document.getElementById('authLoginForm');
-  const title = document.getElementById('authTitle');
-  const subtitle = document.getElementById('authSubtitle');
-  const toggleRow = document.getElementById('authToggleRow');
-
-  if (modal && loginForm && pendingEmailRegistration) {
-    if (title) title.textContent = 'Verify Your Email';
-    if (subtitle) subtitle.innerHTML = `Enter the 6-digit code sent to <strong>${pendingEmailRegistration.email}</strong>:`;
-    if (toggleRow) toggleRow.style.display = 'none';
-
-    loginForm.onsubmit = (e) => {
-      e.preventDefault();
-      const codeInput = document.getElementById('modalOtpCode');
-      window.confirmEmailVerification(codeInput ? codeInput.value : '');
-    };
-
-    loginForm.innerHTML = `
-      <div class="auth-alert info" style="display:block; margin-bottom:12px;">
-        📧 Security Code: <strong style="letter-spacing:2px; font-size:1.05rem;">${code}</strong>
-      </div>
-      <div class="form-group" style="margin-bottom: 1rem;">
-        <label for="modalOtpCode" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Enter 6-Digit Code</label>
-        <input type="text" id="modalOtpCode" maxlength="6" pattern="[0-9]*" inputmode="numeric" required placeholder="e.g. 123456" autofocus style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px; font-size:1.2rem; letter-spacing:4px; text-align:center;">
-      </div>
-      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px; font-weight:700;">
-        Verify & Activate Account &rarr;
-      </button>
-      <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:0.8rem;">
-        <button type="button" class="auth-link" onclick="window.resendVerificationCode()">Resend Code</button>
-        <button type="button" class="auth-link" onclick="window.switchAuthView('signup')">&larr; Back</button>
-      </div>
-    `;
-    const input = document.getElementById('modalOtpCode');
-    if (input) setTimeout(() => input.focus(), 60);
-  }
-};
-
-// Proper Email Sign In Handler with Strict Validation
-window.signInWithEmail = function(email, password) {
+// Authentic Supabase Email & Password Sign In
+window.signInWithEmail = async function(email, password) {
   email = (email || '').trim().toLowerCase();
   password = (password || '').trim();
 
@@ -2201,39 +1407,69 @@ window.signInWithEmail = function(email, password) {
     return;
   }
 
-  const validation = window.validateEmailDetailed(email);
-  if (!validation.isValid) {
-    displayAuthAlert('error', validation.message);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    displayAuthAlert('error', 'Please enter a valid email address (e.g. you@brand.com).');
     return;
   }
 
-  const users = getRegisteredUsers();
-  const user = users.find(u => u.email.toLowerCase() === email);
-
-  if (!user) {
-    displayAuthAlert('error', `No account found for "<strong>${email}</strong>". Please click <strong>Create Account</strong> to register.`);
+  const client = getSupabaseClient();
+  if (!client || !client.auth) {
+    displayAuthAlert('error', 'Authentication server is not connected. Please restore your Supabase project in the Supabase dashboard and set your Anon key.');
     return;
   }
 
-  if (user.password !== password) {
-    displayAuthAlert('error', 'Incorrect password. Please verify your password and try again.');
-    return;
-  }
+  displayAuthAlert('info', 'Verifying credentials...');
 
-  // Proper credentials verified!
-  displayAuthAlert('success', `✓ Signed in successfully! Welcome back, ${user.name}.`);
-  window.authenticateUser({
-    name: user.name,
-    email: user.email,
-    picture: user.picture || '',
-    provider: user.provider || 'email',
-    emailVerified: Boolean(user.emailVerified),
-    signedInAt: new Date().toISOString()
-  });
+  try {
+    const { data, error } = await client.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      const msg = error.message || '';
+      if (msg.toLowerCase().includes('email not confirmed')) {
+        displayAuthAlert('error', `Your email is not verified yet. Please check your inbox at <strong>${email}</strong> and click the confirmation link before signing in.`);
+      } else if (msg.toLowerCase().includes('invalid login credentials') || msg.toLowerCase().includes('invalid credentials')) {
+        displayAuthAlert('error', 'Invalid email or password. Access denied.');
+      } else {
+        displayAuthAlert('error', msg || 'Authentication failed. Please verify your credentials.');
+      }
+      return;
+    }
+
+    if (!data || !data.user) {
+      displayAuthAlert('error', 'Authentication failed: User record not found.');
+      return;
+    }
+
+    const u = data.user;
+    const profile = {
+      id: u.id,
+      name: u.user_metadata?.full_name || u.user_metadata?.name || u.email.split('@')[0],
+      email: u.email,
+      picture: u.user_metadata?.avatar_url || '',
+      provider: 'email',
+      signedInAt: new Date().toISOString()
+    };
+
+    displayAuthAlert('success', `✓ Verified! Welcome back, ${profile.name}.`);
+    window.authenticateUser(profile);
+
+    // If on login.html, redirect smoothly to studio
+    if (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html')) {
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 700);
+    }
+  } catch (err) {
+    console.error("Sign in error:", err);
+    displayAuthAlert('error', `Sign in error: ${err.message || 'Unable to connect to authentication server'}`);
+  }
 };
 
-// Proper Email Sign Up Handler with Strict Anti-Fake Validation & OTP
-window.signUpWithEmail = function(email, password, name) {
+// Authentic Supabase Email Sign Up with Email Verification
+window.signUpWithEmail = async function(email, password, name) {
   email = (email || '').trim().toLowerCase();
   password = (password || '').trim();
   name = (name || '').trim();
@@ -2243,10 +1479,8 @@ window.signUpWithEmail = function(email, password, name) {
     return;
   }
 
-  // Strict email validation (blocks fake, disposable, temporary, and typo domains)
-  const validation = window.validateEmailDetailed(email);
-  if (!validation.isValid) {
-    displayAuthAlert('error', validation.message);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    displayAuthAlert('error', 'Please enter a valid email address.');
     return;
   }
 
@@ -2255,88 +1489,317 @@ window.signUpWithEmail = function(email, password, name) {
     return;
   }
 
-  const users = getRegisteredUsers();
-  const existing = users.find(u => u.email.toLowerCase() === email);
-
-  if (existing) {
-    displayAuthAlert('error', `An account with "<strong>${email}</strong>" already exists. Please Sign In.`);
-    if (typeof switchAuthTab === 'function') {
-      switchAuthTab('signin');
-      const signInEmail = document.getElementById('signInEmail');
-      if (signInEmail) signInEmail.value = email;
-    }
+  const client = getSupabaseClient();
+  if (!client || !client.auth) {
+    displayAuthAlert('error', 'Authentication server is not connected. Please ensure your Supabase project is active.');
     return;
   }
 
-  // Initiate 6-Digit Email Verification (OTP) to prove email ownership
-  window.startEmailVerification(email, password, name);
+  displayAuthAlert('info', 'Creating account and sending verification email...');
+
+  try {
+    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html');
+    const redirectUrl = window.location.origin + (isLoginPage ? window.location.pathname : '/login.html');
+
+    const { data, error } = await client.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          full_name: name
+        },
+        emailRedirectTo: redirectUrl
+      }
+    });
+
+    if (error) {
+      displayAuthAlert('error', error.message || 'Account creation failed.');
+      return;
+    }
+
+    // Check if session was returned directly or if email verification is mandatory
+    if (data.session && data.user) {
+      const u = data.user;
+      const profile = {
+        id: u.id,
+        name: u.user_metadata?.full_name || name,
+        email: u.email,
+        provider: 'email',
+        signedInAt: new Date().toISOString()
+      };
+      displayAuthAlert('success', `✓ Account created successfully! Welcome, ${profile.name}.`);
+      window.authenticateUser(profile);
+    } else {
+      // Real email verification required! Fake emails cannot proceed.
+      window.pendingVerificationEmail = email;
+      const emailVerifyView = document.getElementById('emailVerifyView');
+      const authMainView = document.getElementById('authMainView');
+      const verifyTarget = document.getElementById('verifyTargetEmail');
+      const verifyAlert = document.getElementById('verifyAlert');
+
+      if (emailVerifyView && authMainView) {
+        if (verifyTarget) verifyTarget.textContent = email;
+        authMainView.style.display = 'none';
+        emailVerifyView.style.display = 'block';
+        if (verifyAlert) {
+          verifyAlert.className = 'auth-alert success';
+          verifyAlert.innerHTML = `✓ Verification code sent to <strong>${email}</strong>! Enter the 6-digit code or click the confirmation link sent to your inbox.`;
+          verifyAlert.style.display = 'block';
+        }
+        setupOtpInputListeners();
+      } else {
+        displayAuthAlert('success', `✓ Verification email sent to <strong>${email}</strong>!<br>Please check your inbox and click the verification link to activate your account. You will not be able to log in until your email is verified.`);
+        setTimeout(() => {
+          if (typeof switchAuthTab === 'function') switchAuthTab('signin');
+          const signInEmail = document.getElementById('signInEmail');
+          if (signInEmail) signInEmail.value = email;
+        }, 4500);
+      }
+    }
+  } catch (err) {
+    console.error("Sign up error:", err);
+    displayAuthAlert('error', `Registration error: ${err.message || 'Unable to register account'}`);
+  }
 };
 
-// Proper Password Reset Handler with Strict Validation
-window.resetPassword = function(email) {
-  email = (email || '').trim().toLowerCase();
-  const resetAlert = document.getElementById('resetAlert') || document.getElementById('authAlert');
+// Verify 6-digit OTP code with Supabase
+window.confirmEmailVerification = async function(token) {
+  const email = window.pendingVerificationEmail || (document.getElementById('verifyTargetEmail')?.textContent.trim());
+  const verifyAlert = document.getElementById('verifyAlert') || document.getElementById('authAlert');
+
+  const showVerifyAlert = (type, msg) => {
+    if (verifyAlert) {
+      verifyAlert.className = `auth-alert ${type}`;
+      verifyAlert.innerHTML = msg;
+      verifyAlert.style.display = 'block';
+    }
+  };
 
   if (!email) {
-    if (resetAlert) {
-      resetAlert.className = 'auth-alert error';
-      resetAlert.textContent = 'Please enter your registered email address.';
-      resetAlert.style.display = 'block';
-    }
+    showVerifyAlert('error', 'No pending email found. Please start registration again.');
     return;
   }
 
-  const validation = window.validateEmailDetailed(email);
-  if (!validation.isValid) {
-    if (resetAlert) {
-      resetAlert.className = 'auth-alert error';
-      resetAlert.innerHTML = validation.message;
-      resetAlert.style.display = 'block';
-    }
+  token = String(token || '').trim();
+  if (token.length < 6) {
+    showVerifyAlert('error', 'Please enter all 6 digits of the verification code.');
     return;
   }
 
-  const users = getRegisteredUsers();
-  const user = users.find(u => u.email.toLowerCase() === email);
-
-  if (!user) {
-    if (resetAlert) {
-      resetAlert.className = 'auth-alert error';
-      resetAlert.innerHTML = `No registered account found with "<strong>${email}</strong>".`;
-      resetAlert.style.display = 'block';
-    }
+  const client = getSupabaseClient();
+  if (!client || !client.auth) {
+    showVerifyAlert('error', 'Authentication server is not connected.');
     return;
   }
 
-  user.password = "Ashraa@123";
-  saveRegisteredUsers(users);
+  showVerifyAlert('info', 'Verifying security code...');
 
-  if (resetAlert) {
-    resetAlert.className = 'auth-alert success';
-    resetAlert.innerHTML = `✓ Password reset successful for <strong>${email}</strong>!<br>Your temporary password is: <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-weight:700;">Ashraa@123</span><br>Click Back to Sign In to log in.`;
-    resetAlert.style.display = 'block';
+  try {
+    const { data, error } = await client.auth.verifyOtp({
+      email: email,
+      token: token,
+      type: 'signup'
+    });
+
+    if (error) {
+      showVerifyAlert('error', `Invalid or expired code: ${error.message}. Access denied.`);
+      return;
+    }
+
+    if (data && data.user) {
+      const u = data.user;
+      const profile = {
+        id: u.id,
+        name: u.user_metadata?.full_name || email.split('@')[0],
+        email: u.email,
+        provider: 'email',
+        signedInAt: new Date().toISOString()
+      };
+      showVerifyAlert('success', `✓ Email verified successfully! Welcome, ${profile.name}.`);
+      window.authenticateUser(profile);
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 700);
+    }
+  } catch (err) {
+    showVerifyAlert('error', `Verification error: ${err.message || 'Verification failed'}`);
   }
 };
 
-// Portal Gate Initializer
-window.initAuthGate = function() {
-  ensureGoogleModal();
-  loadGoogleIdentityServices();
-  if (typeof window.setupLiveEmailValidation === 'function') {
-    window.setupLiveEmailValidation();
+window.resendVerificationCode = async function() {
+  const email = window.pendingVerificationEmail || (document.getElementById('verifyTargetEmail')?.textContent.trim());
+  const verifyAlert = document.getElementById('verifyAlert');
+  if (!email) return;
+
+  const client = getSupabaseClient();
+  if (!client || !client.auth) return;
+
+  try {
+    const { error } = await client.auth.resend({
+      type: 'signup',
+      email: email
+    });
+    if (error) {
+      if (verifyAlert) {
+        verifyAlert.className = 'auth-alert error';
+        verifyAlert.innerHTML = `Could not resend: ${error.message}`;
+        verifyAlert.style.display = 'block';
+      }
+    } else {
+      if (verifyAlert) {
+        verifyAlert.className = 'auth-alert success';
+        verifyAlert.innerHTML = `✓ A new verification code has been dispatched to <strong>${email}</strong>.`;
+        verifyAlert.style.display = 'block';
+      }
+    }
+  } catch (err) {
+    console.error("Resend error:", err);
+  }
+};
+
+window.cancelEmailVerification = function() {
+  const emailVerifyView = document.getElementById('emailVerifyView');
+  const authMainView = document.getElementById('authMainView');
+  if (emailVerifyView) emailVerifyView.style.display = 'none';
+  if (authMainView) authMainView.style.display = 'block';
+};
+
+// Setup 6-digit OTP input auto-advance
+function setupOtpInputListeners() {
+  const digits = document.querySelectorAll('#otpContainer .otp-digit');
+  if (!digits.length) return;
+
+  digits.forEach((input, index) => {
+    input.value = '';
+    input.oninput = (e) => {
+      const val = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = val ? val.charAt(val.length - 1) : '';
+      if (e.target.value && index < digits.length - 1) {
+        digits[index + 1].focus();
+      }
+      // Check if all 6 filled
+      const allFilled = Array.from(digits).every(d => d.value.length === 1);
+      if (allFilled) {
+        const token = Array.from(digits).map(d => d.value).join('');
+        window.confirmEmailVerification(token);
+      }
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Backspace' && !input.value && index > 0) {
+        digits[index - 1].focus();
+      }
+    };
+    input.onpaste = (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData('text').trim().replace(/[^0-9]/g, '');
+      if (pasteData) {
+        digits.forEach((d, i) => {
+          d.value = pasteData.charAt(i) || '';
+        });
+        const lastIndex = Math.min(pasteData.length - 1, digits.length - 1);
+        if (lastIndex >= 0) digits[lastIndex].focus();
+        if (pasteData.length >= 6) {
+          window.confirmEmailVerification(pasteData.slice(0, 6));
+        }
+      }
+    };
+  });
+
+  if (digits[0]) setTimeout(() => digits[0].focus(), 100);
+}
+
+// Authentic Password Reset via Supabase
+window.resetPassword = async function(email) {
+  email = (email || '').trim().toLowerCase();
+  const alertEl = document.getElementById('resetAlert') || document.getElementById('authAlert');
+
+  const showMsg = (type, msg) => {
+    if (alertEl) {
+      alertEl.className = `auth-alert ${type}`;
+      alertEl.innerHTML = msg;
+      alertEl.style.display = 'block';
+    } else {
+      displayAuthAlert(type, msg);
+    }
+  };
+
+  if (!email) {
+    showMsg('error', 'Please enter your registered email address.');
+    return;
   }
 
+  const client = getSupabaseClient();
+  if (!client || !client.auth) {
+    showMsg('error', 'Authentication server is not connected.');
+    return;
+  }
+
+  showMsg('info', 'Sending password reset link...');
+
+  try {
+    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html');
+    const redirectUrl = window.location.origin + (isLoginPage ? window.location.pathname : '/login.html');
+
+    const { data, error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl
+    });
+
+    if (error) {
+      showMsg('error', error.message || 'Failed to send password reset link.');
+      return;
+    }
+
+    showMsg('success', `✓ A password reset link has been sent to <strong>${email}</strong>. Please check your inbox and spam folder.`);
+  } catch (err) {
+    showMsg('error', `Error: ${err.message || 'Could not send reset link'}`);
+  }
+};
+
+// Portal Gate Initializer (Checks real session from Supabase)
+window.initAuthGate = async function() {
+  loadGoogleIdentityServices();
+
+  const client = getSupabaseClient();
+  if (client && client.auth) {
+    try {
+      const { data: { session }, error } = await client.auth.getSession();
+      if (session && session.user) {
+        const u = session.user;
+        const profile = {
+          id: u.id,
+          name: u.user_metadata?.full_name || u.user_metadata?.name || (u.email ? u.email.split('@')[0] : 'Creator'),
+          email: u.email,
+          picture: u.user_metadata?.avatar_url || u.user_metadata?.picture || '',
+          provider: u.app_metadata?.provider || 'supabase',
+          signedInAt: new Date().toISOString()
+        };
+        window.authenticateUser(profile);
+        return;
+      } else {
+        // No valid session: clear local cache and lock portal
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('ashraa_auth_user');
+        }
+        window.updateAuthUI(null);
+        return;
+      }
+    } catch (err) {
+      console.warn("Session check error:", err);
+    }
+  }
+
+  // Fallback if client is pending initialization
   const savedUser = localStorage.getItem('ashraa_auth_user');
   if (savedUser) {
     try {
       const userData = JSON.parse(savedUser);
-      window.updateAuthUI(userData);
-    } catch (e) {
-      window.updateAuthUI(null);
-    }
-  } else {
-    window.updateAuthUI(null);
+      if (userData && userData.email && userData.id) {
+        window.updateAuthUI(userData);
+        return;
+      }
+    } catch (e) {}
   }
+  window.updateAuthUI(null);
 };
 
 // Auth Modal Open/Close Controls
@@ -2352,9 +1815,6 @@ window.openAuthModal = function(view) {
     authModal.classList.remove('auth-hidden');
     authModal.classList.add('active');
     authModal.style.display = 'flex';
-    if (typeof window.setupLiveEmailValidation === 'function') {
-      window.setupLiveEmailValidation();
-    }
     const emailInput = document.getElementById('authEmail');
     if (emailInput) setTimeout(() => emailInput.focus(), 80);
   } else {
@@ -2384,7 +1844,7 @@ window.switchAuthView = function(view) {
   window.authCurrentView = view;
   const loginForm = document.getElementById('authLoginForm');
   const forgotForm = document.getElementById('authForgotForm');
-  let nameGroup = document.getElementById('authNameGroup');
+  const nameGroup = document.getElementById('authNameGroup');
   const title = document.getElementById('authTitle');
   const subtitle = document.getElementById('authSubtitle');
   const msgBox = document.getElementById('authMsg');
@@ -2393,39 +1853,6 @@ window.switchAuthView = function(view) {
   if (msgBox) {
     msgBox.style.display = 'none';
     msgBox.className = 'auth-msg';
-  }
-
-  // If loginForm was temporarily replaced by OTP verification, restore standard fields
-  if (loginForm && document.getElementById('modalOtpCode')) {
-    loginForm.onsubmit = window.handleEmailAuth;
-    loginForm.innerHTML = `
-      <div class="form-group" id="authNameGroup" style="display: none; margin-bottom: 0.9rem;">
-        <label for="authName" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Full Name</label>
-        <input type="text" id="authName" placeholder="Your Name or Studio Name" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
-      </div>
-
-      <div class="form-group" style="margin-bottom: 0.9rem;">
-        <label for="authEmail" style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">Email Address</label>
-        <input type="email" id="authEmail" required placeholder="creator@brand.com" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
-        <div class="email-hint" id="authEmailHint"></div>
-      </div>
-
-      <div class="form-group" style="margin-bottom: 0.6rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <label for="authPassword" style="font-size:0.8rem; color:#94a3b8; margin:0;">Password</label>
-          <button type="button" class="auth-link" onclick="switchAuthView('forgot')">Forgot password?</button>
-        </div>
-        <input type="password" id="authPassword" required placeholder="••••••••" style="width:100%; background:#151923; border:1px solid #232938; color:#fff; padding:10px 14px; border-radius:8px;">
-      </div>
-
-      <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width:100%; justify-content:center; padding:11px; font-weight:700; margin-top:0.8rem;">
-        Sign In to Portal &rarr;
-      </button>
-    `;
-    nameGroup = document.getElementById('authNameGroup');
-    if (typeof window.setupLiveEmailValidation === 'function') {
-      window.setupLiveEmailValidation();
-    }
   }
 
   if (view === 'forgot') {
@@ -2512,11 +1939,9 @@ function setupFixedNavbarScroll() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.initAuthGate === 'function') window.initAuthGate();
-    if (typeof window.setupLiveEmailValidation === 'function') window.setupLiveEmailValidation();
     setupFixedNavbarScroll();
   });
 } else {
   if (typeof window.initAuthGate === 'function') window.initAuthGate();
-  if (typeof window.setupLiveEmailValidation === 'function') window.setupLiveEmailValidation();
   setupFixedNavbarScroll();
 }
