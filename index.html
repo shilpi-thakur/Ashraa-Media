@@ -497,10 +497,11 @@
     });
 
     function handleGoogleAuth(e) {
-      if (typeof window.handleGoogleAuth === 'function') {
+      if (e && e.preventDefault) e.preventDefault();
+      if (typeof window.signInWithGoogle === 'function') {
+        window.signInWithGoogle(e);
+      } else if (typeof window.handleGoogleAuth === 'function' && window.handleGoogleAuth !== handleGoogleAuth) {
         window.handleGoogleAuth(e);
-      } else if (typeof window.openGoogleModal === 'function') {
-        window.openGoogleModal(e);
       }
     }
   </script>
