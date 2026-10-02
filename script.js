@@ -16,39 +16,111 @@ const STUDIO_NAME     = "Ashraa Media";
 window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
 
 // ==========================================
-// SUPABASE CLIENT INITIALIZATION & CONFIG
+// FIREBASE & SUPABASE CONFIGURATION
 // ==========================================
-// To activate Supabase Auth:
-// 1. If paused, restore your project at: https://supabase.com/dashboard/project/nbxmptemldnusvhbuaih
-// 2. In Supabase Dashboard -> Project Settings -> API, copy your "anon public" key (starts with "eyJ...")
+let FIREBASE_CONFIG = null;
+try {
+  const savedCfg = localStorage.getItem('ashraa_firebase_config');
+  if (savedCfg) FIREBASE_CONFIG = JSON.parse(savedCfg);
+} catch (e) {}
+
+FIREBASE_CONFIG = window.FIREBASE_CONFIG || FIREBASE_CONFIG || {
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "ashraa-media.firebaseapp.com",
+  projectId: "ashraa-media",
+  storageBucket: "ashraa-media.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdef"
+};
+
+let firebaseApp = null;
+let firebaseAuth = null;
+
+function getFirebaseAuth() {
+  if (firebaseAuth) return firebaseAuth;
+  if (typeof window !== 'undefined' && window.firebase) {
+    try {
+      if (!window.firebase.apps || !window.firebase.apps.length) {
+        if (FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("YOUR_")) {
+          firebaseApp = window.firebase.initializeApp(FIREBASE_CONFIG);
+        }
+      } else {
+        firebaseApp = window.firebase.app();
+      }
+      if (firebaseApp) {
+        firebaseAuth = window.firebase.auth();
+        if (typeof setupFirebaseAuthListener === 'function') {
+          setupFirebaseAuthListener();
+        }
+      }
+    } catch (err) {
+      console.warn("Could not initialize Firebase Auth:", err);
+    }
+  }
+  return firebaseAuth;
+}
+
+window.configureFirebase = function() {
+  const current = localStorage.getItem('ashraa_firebase_config') || (FIREBASE_CONFIG && !FIREBASE_CONFIG.apiKey.includes('YOUR_') ? JSON.stringify(FIREBASE_CONFIG, null, 2) : '');
+  const input = prompt("Paste your Firebase project config object (from Firebase Console > Project Settings > Your apps):\n\nExample:\n{\n  apiKey: 'AIzaSy...',\n  authDomain: 'my-project.firebaseapp.com',\n  projectId: 'my-project'\n}", current);
+  if (!input) return;
+  try {
+    let parsed = null;
+    const clean = input.trim();
+    if (clean.startsWith('{')) {
+      try {
+        parsed = JSON.parse(clean);
+      } catch (err) {
+        parsed = (new Function('return ' + clean))();
+      }
+    } else {
+      const matchApiKey = input.match(/apiKey:\s*["']([^"']+)["']/);
+      const matchAuthDomain = input.match(/authDomain:\s*["']([^"']+)["']/);
+      const matchProjectId = input.match(/projectId:\s*["']([^"']+)["']/);
+      const matchStorageBucket = input.match(/storageBucket:\s*["']([^"']+)["']/);
+      const matchSenderId = input.match(/messagingSenderId:\s*["']([^"']+)["']/);
+      const matchAppId = input.match(/appId:\s*["']([^"']+)["']/);
+      if (matchApiKey && matchProjectId) {
+        parsed = {
+          apiKey: matchApiKey[1],
+          authDomain: matchAuthDomain ? matchAuthDomain[1] : `${matchProjectId[1]}.firebaseapp.com`,
+          projectId: matchProjectId[1],
+          storageBucket: matchStorageBucket ? matchStorageBucket[1] : `${matchProjectId[1]}.appspot.com`,
+          messagingSenderId: matchSenderId ? matchSenderId[1] : '',
+          appId: matchAppId ? matchAppId[1] : ''
+        };
+      }
+    }
+    if (parsed && parsed.apiKey && parsed.projectId) {
+      localStorage.setItem('ashraa_firebase_config', JSON.stringify(parsed));
+      alert("✓ Firebase Configuration saved successfully! Reloading studio...");
+      window.location.reload();
+    } else {
+      alert("Could not find apiKey and projectId in the provided text. Please copy the full firebaseConfig object from Firebase Console.");
+    }
+  } catch (err) {
+    alert("Invalid configuration format: " + err.message);
+  }
+};
+
+// Initial Firebase attempt
+getFirebaseAuth();
+
+// Optional Supabase client (for projects portfolio table)
 const SUPABASE_URL = (typeof window !== 'undefined' && (window.SUPABASE_URL || localStorage.getItem('ashraa_supabase_url'))) || "https://nbxmptemldnusvhbuaih.supabase.co";
 const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && (window.SUPABASE_ANON_KEY || localStorage.getItem('ashraa_supabase_anon_key'))) || "sb_publishable_edVFMpyCnnpmf95F4Eyn9g_2fOBCrbP";
 
 let supabaseClient = null;
-
 function getSupabaseClient() {
   if (supabaseClient) return supabaseClient;
   if (typeof window !== 'undefined' && window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("YOUR_ANON_KEY")) {
     try {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        }
-      });
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       window.supabaseClient = supabaseClient;
-      if (typeof setupSupabaseAuthListener === 'function') {
-        setupSupabaseAuthListener();
-      }
-    } catch (err) {
-      console.warn("Could not initialize Supabase client:", err);
-    }
+    } catch (err) {}
   }
   return supabaseClient;
 }
-
-// Initial client creation attempt
 getSupabaseClient();
 
 // Helper: Extract clean Google Drive ID from any URL or string
@@ -1125,68 +1197,94 @@ window.configureSupabase = function() {
   window.location.reload();
 };
 
-// Genuine Google OAuth Authentication
+// Setup Firebase Real-Time Auth State Synchronizer
+function setupFirebaseAuthListener() {
+  const auth = getFirebaseAuth();
+  if (auth && !window._firebaseAuthListenerAttached) {
+    window._firebaseAuthListenerAttached = true;
+    auth.onAuthStateChanged((user) => {
+      console.log("[Firebase Auth State]", user ? user.email : "Signed out");
+      if (user && (user.emailVerified || (user.providerData && user.providerData.some(p => p.providerId === 'google.com')))) {
+        const profile = {
+          id: user.uid,
+          name: user.displayName || user.email.split('@')[0],
+          email: user.email,
+          picture: user.photoURL || '',
+          provider: (user.providerData && user.providerData[0]?.providerId) || 'firebase',
+          signedInAt: new Date().toISOString()
+        };
+        window.authenticateUser(profile);
+      } else {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('ashraa_auth_user');
+        }
+        window.updateAuthUI(null);
+      }
+    });
+  }
+}
+
+// Genuine Google Authentication via Firebase (1-Click Native Popup, Zero DNS Errors)
 window.signInWithGoogle = async function(e) {
   if (e) {
     if (e.preventDefault) e.preventDefault();
     if (e.stopPropagation) e.stopPropagation();
   }
 
-  const client = getSupabaseClient();
-  if (!client || !client.auth) {
-    displayAuthAlert('error', `⚠️ <strong>Supabase client not initialized.</strong><br>Please verify your Project URL & Anon Key.<br><button type="button" onclick="window.configureSupabase()" class="btn btn-secondary" style="margin-top:8px; padding:6px 12px; font-size:0.78rem;">Configure Supabase Keys</button>`);
-    return;
-  }
-
-  displayAuthAlert('info', '<span class="google-spinner"></span> Checking Supabase server connection...');
-
-  // Pre-flight DNS & Server Health Check
-  const reachable = await isSupabaseReachable();
-  if (!reachable) {
-    const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
+  const auth = getFirebaseAuth();
+  if (!auth) {
     displayAuthAlert('error', `
       <div style="text-align:left;">
-        <strong>⚠️ Cannot reach your Supabase server (${SUPABASE_URL})</strong><br>
+        <strong>⚙️ Connect Your Firebase Project</strong><br>
         <span style="font-size:0.82rem; color:#fca5a5; display:block; margin:6px 0;">
-          This occurs because free Supabase projects <strong>pause automatically after 7 days of inactivity</strong>, temporarily removing their DNS IP.
+          Firebase is free and never pauses! Please paste your Firebase config to activate Google Sign-In.
         </span>
-        <div style="margin-top:8px; font-size:0.82rem; line-height:1.5;">
-          <strong>Quick Fix in 60 seconds:</strong><br>
-          1. Open <a href="https://supabase.com/dashboard/project/${ref}" target="_blank" rel="noopener" style="color:#93c5fd; text-decoration:underline; font-weight:700;">supabase.com/dashboard</a> and click <strong>"Restore project"</strong>.<br>
-          2. Wait 1–2 minutes for the status to turn green.<br>
-          3. If you have a different active project URL or Anon key, click below:
-        </div>
-        <button type="button" onclick="window.configureSupabase()" class="btn btn-secondary" style="margin-top:10px; padding:6px 14px; font-size:0.8rem; background:#1e293b; color:#fff; border:1px solid #3b82f6; border-radius:6px; cursor:pointer;">
-          ⚙️ Update Supabase URL & Anon Key
+        <button type="button" onclick="window.configureFirebase()" class="btn btn-primary" style="margin-top:8px; padding:6px 14px; font-size:0.8rem; border-radius:6px; cursor:pointer;">
+          Paste Firebase Config &rarr;
         </button>
       </div>
     `);
     return;
   }
 
-  displayAuthAlert('info', '<span class="google-spinner"></span> Connecting to Google Authentication...');
+  displayAuthAlert('info', '<span class="google-spinner"></span> Opening Google Sign-In...');
 
   try {
-    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html');
-    const redirectUrl = window.location.origin + (isLoginPage ? window.location.pathname : '/login.html');
+    const provider = new window.firebase.auth.GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.setCustomParameters({ prompt: 'select_account' });
 
-    const { data, error } = await client.auth.signInWithOAuth({
+    // Official Google OAuth Popup Window
+    const result = await auth.signInWithPopup(provider);
+    const user = result.user;
+
+    const profile = {
+      id: user.uid,
+      name: user.displayName || user.email.split('@')[0],
+      email: user.email,
+      picture: user.photoURL || '',
       provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
-        }
-      }
-    });
+      signedInAt: new Date().toISOString()
+    };
 
-    if (error) {
-      displayAuthAlert('error', `Google Authentication failed: ${error.message}`);
+    displayAuthAlert('success', `✓ Verified via Google! Welcome, ${profile.name}.`);
+    window.authenticateUser(profile);
+
+    if (window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html')) {
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 700);
     }
   } catch (err) {
-    console.error("Google sign-in error:", err);
-    displayAuthAlert('error', `Google Authentication error: ${err.message || 'Unable to connect to Google OAuth'}`);
+    console.error("Firebase Google Auth error:", err);
+    if (err.code === 'auth/popup-closed-by-user') {
+      displayAuthAlert('info', 'Google sign-in popup was closed.');
+    } else if (err.code === 'auth/unauthorized-domain') {
+      displayAuthAlert('error', `This domain ("${window.location.hostname}") is not yet authorized in Firebase Console > Authentication > Settings > Authorized domains. Please add "${window.location.hostname}" there.`);
+    } else {
+      displayAuthAlert('error', `Google Authentication failed: ${err.message}`);
+    }
   }
 };
 
@@ -1428,12 +1526,12 @@ window.signOutUser = async function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.closeUserDropdown();
 
-  const client = getSupabaseClient();
-  if (client && client.auth) {
+  const auth = getFirebaseAuth();
+  if (auth) {
     try {
-      await client.auth.signOut();
+      await auth.signOut();
     } catch (err) {
-      console.warn("Supabase sign out error:", err);
+      console.warn("Firebase sign out error:", err);
     }
   }
 
@@ -1458,7 +1556,7 @@ window.signOutUser = async function(e) {
 
 window.handleSignOut = window.signOutUser;
 
-// Authentic Supabase Email & Password Sign In
+// Authentic Firebase Email & Password Sign In
 window.signInWithEmail = async function(email, password) {
   email = (email || '').trim().toLowerCase();
   password = (password || '').trim();
@@ -1473,43 +1571,29 @@ window.signInWithEmail = async function(email, password) {
     return;
   }
 
-  const client = getSupabaseClient();
-  if (!client || !client.auth) {
-    displayAuthAlert('error', 'Authentication server is not connected. Please restore your Supabase project in the Supabase dashboard and set your Anon key.');
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    displayAuthAlert('error', `Firebase Auth is not configured.<br><button type="button" onclick="window.configureFirebase()" class="btn btn-secondary" style="margin-top:6px; font-size:0.78rem;">Configure Firebase</button>`);
     return;
   }
 
   displayAuthAlert('info', 'Verifying credentials...');
 
   try {
-    const { data, error } = await client.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
+    const cred = await auth.signInWithEmailAndPassword(email, password);
+    const user = cred.user;
 
-    if (error) {
-      const msg = error.message || '';
-      if (msg.toLowerCase().includes('email not confirmed')) {
-        displayAuthAlert('error', `Your email is not verified yet. Please check your inbox at <strong>${email}</strong> and click the confirmation link before signing in.`);
-      } else if (msg.toLowerCase().includes('invalid login credentials') || msg.toLowerCase().includes('invalid credentials')) {
-        displayAuthAlert('error', 'Invalid email or password. Access denied.');
-      } else {
-        displayAuthAlert('error', msg || 'Authentication failed. Please verify your credentials.');
-      }
+    // Strict Email Verification Check - Fake or unverified emails CANNOT enter!
+    if (!user.emailVerified) {
+      displayAuthAlert('error', `Your email is not verified yet. Please check your inbox at <strong>${email}</strong> and click the confirmation link before signing in.<br><button type="button" onclick="window.resendFirebaseVerification()" class="auth-link" style="margin-top:6px; font-size:0.8rem; display:inline-block;">Resend verification email</button>`);
       return;
     }
 
-    if (!data || !data.user) {
-      displayAuthAlert('error', 'Authentication failed: User record not found.');
-      return;
-    }
-
-    const u = data.user;
     const profile = {
-      id: u.id,
-      name: u.user_metadata?.full_name || u.user_metadata?.name || u.email.split('@')[0],
-      email: u.email,
-      picture: u.user_metadata?.avatar_url || '',
+      id: user.uid,
+      name: user.displayName || user.email.split('@')[0],
+      email: user.email,
+      picture: user.photoURL || '',
       provider: 'email',
       signedInAt: new Date().toISOString()
     };
@@ -1525,11 +1609,15 @@ window.signInWithEmail = async function(email, password) {
     }
   } catch (err) {
     console.error("Sign in error:", err);
-    displayAuthAlert('error', `Sign in error: ${err.message || 'Unable to connect to authentication server'}`);
+    if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+      displayAuthAlert('error', 'Invalid email or password. Access denied.');
+    } else {
+      displayAuthAlert('error', err.message || 'Authentication failed. Access denied.');
+    }
   }
 };
 
-// Authentic Supabase Email Sign Up with Email Verification
+// Authentic Firebase Email Sign Up with Real Email Verification Link
 window.signUpWithEmail = async function(email, password, name) {
   email = (email || '').trim().toLowerCase();
   password = (password || '').trim();
@@ -1550,226 +1638,59 @@ window.signUpWithEmail = async function(email, password, name) {
     return;
   }
 
-  const client = getSupabaseClient();
-  if (!client || !client.auth) {
-    displayAuthAlert('error', 'Authentication server is not connected. Please ensure your Supabase project is active.');
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    displayAuthAlert('error', `Firebase Auth is not configured.<br><button type="button" onclick="window.configureFirebase()" class="btn btn-secondary" style="margin-top:6px; font-size:0.78rem;">Configure Firebase</button>`);
     return;
   }
 
   displayAuthAlert('info', 'Creating account and sending verification email...');
 
   try {
-    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html');
-    const redirectUrl = window.location.origin + (isLoginPage ? window.location.pathname : '/login.html');
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
+    const user = cred.user;
 
-    const { data, error } = await client.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          full_name: name
-        },
-        emailRedirectTo: redirectUrl
-      }
-    });
-
-    if (error) {
-      displayAuthAlert('error', error.message || 'Account creation failed.');
-      return;
+    if (name) {
+      try {
+        await user.updateProfile({ displayName: name });
+      } catch (e) {}
     }
 
-    // Check if session was returned directly or if email verification is mandatory
-    if (data.session && data.user) {
-      const u = data.user;
-      const profile = {
-        id: u.id,
-        name: u.user_metadata?.full_name || name,
-        email: u.email,
-        provider: 'email',
-        signedInAt: new Date().toISOString()
-      };
-      displayAuthAlert('success', `✓ Account created successfully! Welcome, ${profile.name}.`);
-      window.authenticateUser(profile);
-    } else {
-      // Real email verification required! Fake emails cannot proceed.
-      window.pendingVerificationEmail = email;
-      const emailVerifyView = document.getElementById('emailVerifyView');
-      const authMainView = document.getElementById('authMainView');
-      const verifyTarget = document.getElementById('verifyTargetEmail');
-      const verifyAlert = document.getElementById('verifyAlert');
+    // Send official Google/Firebase verification email with link
+    await user.sendEmailVerification();
 
-      if (emailVerifyView && authMainView) {
-        if (verifyTarget) verifyTarget.textContent = email;
-        authMainView.style.display = 'none';
-        emailVerifyView.style.display = 'block';
-        if (verifyAlert) {
-          verifyAlert.className = 'auth-alert success';
-          verifyAlert.innerHTML = `✓ Verification code sent to <strong>${email}</strong>! Enter the 6-digit code or click the confirmation link sent to your inbox.`;
-          verifyAlert.style.display = 'block';
-        }
-        setupOtpInputListeners();
-      } else {
-        displayAuthAlert('success', `✓ Verification email sent to <strong>${email}</strong>!<br>Please check your inbox and click the verification link to activate your account. You will not be able to log in until your email is verified.`);
-        setTimeout(() => {
-          if (typeof switchAuthTab === 'function') switchAuthTab('signin');
-          const signInEmail = document.getElementById('signInEmail');
-          if (signInEmail) signInEmail.value = email;
-        }, 4500);
-      }
-    }
+    displayAuthAlert('success', `✓ Account created! A real verification link has been sent to <strong>${email}</strong>.<br>Please open your email inbox and click the verification link. Unverified accounts cannot access the studio.`);
+
+    setTimeout(() => {
+      if (typeof switchAuthTab === 'function') switchAuthTab('signin');
+      const signInEmail = document.getElementById('signInEmail');
+      if (signInEmail) signInEmail.value = email;
+    }, 5500);
   } catch (err) {
     console.error("Sign up error:", err);
-    displayAuthAlert('error', `Registration error: ${err.message || 'Unable to register account'}`);
-  }
-};
-
-// Verify 6-digit OTP code with Supabase
-window.confirmEmailVerification = async function(token) {
-  const email = window.pendingVerificationEmail || (document.getElementById('verifyTargetEmail')?.textContent.trim());
-  const verifyAlert = document.getElementById('verifyAlert') || document.getElementById('authAlert');
-
-  const showVerifyAlert = (type, msg) => {
-    if (verifyAlert) {
-      verifyAlert.className = `auth-alert ${type}`;
-      verifyAlert.innerHTML = msg;
-      verifyAlert.style.display = 'block';
-    }
-  };
-
-  if (!email) {
-    showVerifyAlert('error', 'No pending email found. Please start registration again.');
-    return;
-  }
-
-  token = String(token || '').trim();
-  if (token.length < 6) {
-    showVerifyAlert('error', 'Please enter all 6 digits of the verification code.');
-    return;
-  }
-
-  const client = getSupabaseClient();
-  if (!client || !client.auth) {
-    showVerifyAlert('error', 'Authentication server is not connected.');
-    return;
-  }
-
-  showVerifyAlert('info', 'Verifying security code...');
-
-  try {
-    const { data, error } = await client.auth.verifyOtp({
-      email: email,
-      token: token,
-      type: 'signup'
-    });
-
-    if (error) {
-      showVerifyAlert('error', `Invalid or expired code: ${error.message}. Access denied.`);
-      return;
-    }
-
-    if (data && data.user) {
-      const u = data.user;
-      const profile = {
-        id: u.id,
-        name: u.user_metadata?.full_name || email.split('@')[0],
-        email: u.email,
-        provider: 'email',
-        signedInAt: new Date().toISOString()
-      };
-      showVerifyAlert('success', `✓ Email verified successfully! Welcome, ${profile.name}.`);
-      window.authenticateUser(profile);
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 700);
-    }
-  } catch (err) {
-    showVerifyAlert('error', `Verification error: ${err.message || 'Verification failed'}`);
-  }
-};
-
-window.resendVerificationCode = async function() {
-  const email = window.pendingVerificationEmail || (document.getElementById('verifyTargetEmail')?.textContent.trim());
-  const verifyAlert = document.getElementById('verifyAlert');
-  if (!email) return;
-
-  const client = getSupabaseClient();
-  if (!client || !client.auth) return;
-
-  try {
-    const { error } = await client.auth.resend({
-      type: 'signup',
-      email: email
-    });
-    if (error) {
-      if (verifyAlert) {
-        verifyAlert.className = 'auth-alert error';
-        verifyAlert.innerHTML = `Could not resend: ${error.message}`;
-        verifyAlert.style.display = 'block';
-      }
+    if (err.code === 'auth/email-already-in-use') {
+      displayAuthAlert('error', `An account with "<strong>${email}</strong>" already exists. Please Sign In.`);
     } else {
-      if (verifyAlert) {
-        verifyAlert.className = 'auth-alert success';
-        verifyAlert.innerHTML = `✓ A new verification code has been dispatched to <strong>${email}</strong>.`;
-        verifyAlert.style.display = 'block';
-      }
+      displayAuthAlert('error', err.message || 'Registration failed.');
     }
-  } catch (err) {
-    console.error("Resend error:", err);
   }
 };
 
-window.cancelEmailVerification = function() {
-  const emailVerifyView = document.getElementById('emailVerifyView');
-  const authMainView = document.getElementById('authMainView');
-  if (emailVerifyView) emailVerifyView.style.display = 'none';
-  if (authMainView) authMainView.style.display = 'block';
+window.resendFirebaseVerification = async function() {
+  const auth = getFirebaseAuth();
+  if (auth && auth.currentUser) {
+    try {
+      await auth.currentUser.sendEmailVerification();
+      displayAuthAlert('success', '✓ A new verification email has been dispatched. Please check your inbox.');
+    } catch (e) {
+      displayAuthAlert('error', e.message);
+    }
+  } else {
+    displayAuthAlert('info', 'Please sign in with your email and password first to resend verification.');
+  }
 };
 
-// Setup 6-digit OTP input auto-advance
-function setupOtpInputListeners() {
-  const digits = document.querySelectorAll('#otpContainer .otp-digit');
-  if (!digits.length) return;
-
-  digits.forEach((input, index) => {
-    input.value = '';
-    input.oninput = (e) => {
-      const val = e.target.value.replace(/[^0-9]/g, '');
-      e.target.value = val ? val.charAt(val.length - 1) : '';
-      if (e.target.value && index < digits.length - 1) {
-        digits[index + 1].focus();
-      }
-      // Check if all 6 filled
-      const allFilled = Array.from(digits).every(d => d.value.length === 1);
-      if (allFilled) {
-        const token = Array.from(digits).map(d => d.value).join('');
-        window.confirmEmailVerification(token);
-      }
-    };
-    input.onkeydown = (e) => {
-      if (e.key === 'Backspace' && !input.value && index > 0) {
-        digits[index - 1].focus();
-      }
-    };
-    input.onpaste = (e) => {
-      e.preventDefault();
-      const pasteData = (e.clipboardData || window.clipboardData).getData('text').trim().replace(/[^0-9]/g, '');
-      if (pasteData) {
-        digits.forEach((d, i) => {
-          d.value = pasteData.charAt(i) || '';
-        });
-        const lastIndex = Math.min(pasteData.length - 1, digits.length - 1);
-        if (lastIndex >= 0) digits[lastIndex].focus();
-        if (pasteData.length >= 6) {
-          window.confirmEmailVerification(pasteData.slice(0, 6));
-        }
-      }
-    };
-  });
-
-  if (digits[0]) setTimeout(() => digits[0].focus(), 100);
-}
-
-// Authentic Password Reset via Supabase
+// Authentic Password Reset via Firebase
 window.resetPassword = async function(email) {
   email = (email || '').trim().toLowerCase();
   const alertEl = document.getElementById('resetAlert') || document.getElementById('authAlert');
@@ -1789,76 +1710,43 @@ window.resetPassword = async function(email) {
     return;
   }
 
-  const client = getSupabaseClient();
-  if (!client || !client.auth) {
-    showMsg('error', 'Authentication server is not connected.');
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    showMsg('error', 'Firebase Auth is not connected.');
     return;
   }
 
   showMsg('info', 'Sending password reset link...');
 
   try {
-    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.href.includes('login.html');
-    const redirectUrl = window.location.origin + (isLoginPage ? window.location.pathname : '/login.html');
-
-    const { data, error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl
-    });
-
-    if (error) {
-      showMsg('error', error.message || 'Failed to send password reset link.');
-      return;
-    }
-
+    await auth.sendPasswordResetEmail(email);
     showMsg('success', `✓ A password reset link has been sent to <strong>${email}</strong>. Please check your inbox and spam folder.`);
   } catch (err) {
-    showMsg('error', `Error: ${err.message || 'Could not send reset link'}`);
+    showMsg('error', err.message || 'Could not send reset email.');
   }
 };
 
-// Portal Gate Initializer (Checks real session from Supabase)
+// Portal Gate Initializer (Checks real Firebase session)
 window.initAuthGate = async function() {
-  loadGoogleIdentityServices();
-
-  const client = getSupabaseClient();
-  if (client && client.auth) {
-    try {
-      const { data: { session }, error } = await client.auth.getSession();
-      if (session && session.user) {
-        const u = session.user;
-        const profile = {
-          id: u.id,
-          name: u.user_metadata?.full_name || u.user_metadata?.name || (u.email ? u.email.split('@')[0] : 'Creator'),
-          email: u.email,
-          picture: u.user_metadata?.avatar_url || u.user_metadata?.picture || '',
-          provider: u.app_metadata?.provider || 'supabase',
-          signedInAt: new Date().toISOString()
-        };
-        window.authenticateUser(profile);
-        return;
-      } else {
-        // No valid session: clear local cache and lock portal
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem('ashraa_auth_user');
-        }
-        window.updateAuthUI(null);
-        return;
-      }
-    } catch (err) {
-      console.warn("Session check error:", err);
+  const auth = getFirebaseAuth();
+  if (auth) {
+    const user = auth.currentUser;
+    if (user && (user.emailVerified || (user.providerData && user.providerData.some(p => p.providerId === 'google.com')))) {
+      const profile = {
+        id: user.uid,
+        name: user.displayName || user.email.split('@')[0],
+        email: user.email,
+        picture: user.photoURL || '',
+        provider: (user.providerData && user.providerData[0]?.providerId) || 'firebase',
+        signedInAt: new Date().toISOString()
+      };
+      window.authenticateUser(profile);
+      return;
     }
   }
 
-  // Fallback if client is pending initialization
-  const savedUser = localStorage.getItem('ashraa_auth_user');
-  if (savedUser) {
-    try {
-      const userData = JSON.parse(savedUser);
-      if (userData && userData.email && userData.id) {
-        window.updateAuthUI(userData);
-        return;
-      }
-    } catch (e) {}
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('ashraa_auth_user');
   }
   window.updateAuthUI(null);
 };
