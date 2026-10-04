@@ -16,16 +16,10 @@ const STUDIO_NAME     = "Ashraa Media";
 window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
 
 // ==========================================
-// FIREBASE & SUPABASE CONFIGURATION
+// FIREBASE CONFIGURATION (ashraa-media)
+// NOTE: This file is a standard browser script. Do NOT add "import ... from 'firebase/app'".
+// The Firebase Compat SDK is loaded via <script> tags in the HTML <head>.
 // ==========================================
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyArxdpZr8l-MQ_zkyQ2S82WKcDw4UVPlds",
   authDomain: "ashraa-media.firebaseapp.com",
@@ -36,9 +30,23 @@ const firebaseConfig = {
   measurementId: "G-RSPGYLY13Y"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const DEFAULT_FIREBASE_CONFIG = firebaseConfig;
+let FIREBASE_CONFIG = DEFAULT_FIREBASE_CONFIG;
+try {
+  const savedCfg = localStorage.getItem('ashraa_firebase_config');
+  if (savedCfg) {
+    const parsed = JSON.parse(savedCfg);
+    if (parsed && parsed.apiKey && !parsed.apiKey.includes('YOUR_') && parsed.projectId === 'ashraa-media') {
+      FIREBASE_CONFIG = Object.assign({}, DEFAULT_FIREBASE_CONFIG, parsed);
+    } else {
+      localStorage.removeItem('ashraa_firebase_config');
+    }
+  }
+} catch (e) {
+  localStorage.removeItem('ashraa_firebase_config');
+}
+window.FIREBASE_CONFIG = FIREBASE_CONFIG;
+window.firebaseConfig = FIREBASE_CONFIG;
 
 let firebaseApp = null;
 let firebaseAuth = null;
@@ -1209,6 +1217,27 @@ function setupFirebaseAuthListener() {
   const auth = getFirebaseAuth();
   if (auth && !window._firebaseAuthListenerAttached) {
     window._firebaseAuthListenerAttached = true;
+
+    // Check for redirect sign-in result (mobile / popup-blocked fallback)
+    if (typeof auth.getRedirectResult === 'function') {
+      auth.getRedirectResult().then((result) => {
+        if (result && result.user) {
+          const user = result.user;
+          const profile = {
+            id: user.uid,
+            name: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            picture: user.photoURL || '',
+            provider: 'google',
+            signedInAt: new Date().toISOString()
+          };
+          window.authenticateUser(profile);
+        }
+      }).catch((err) => {
+        console.warn("[Firebase Redirect Auth Notice]", err);
+      });
+    }
+
     auth.onAuthStateChanged((user) => {
       console.log("[Firebase Auth State]", user ? user.email : "Signed out");
       if (user && (user.emailVerified || (user.providerData && user.providerData.some(p => p.providerId === 'google.com')))) {
@@ -1242,13 +1271,10 @@ window.signInWithGoogle = async function(e) {
   if (!auth) {
     displayAuthAlert('error', `
       <div style="text-align:left;">
-        <strong>⚙️ Connect Your Firebase Project</strong><br>
+        <strong>⚙️ Initializing Firebase...</strong><br>
         <span style="font-size:0.82rem; color:#fca5a5; display:block; margin:6px 0;">
-          Firebase is free and never pauses! Please paste your Firebase config to activate Google Sign-In.
+          Firebase Auth is loading. Please refresh the page and try again.
         </span>
-        <button type="button" onclick="window.configureFirebase()" class="btn btn-primary" style="margin-top:8px; padding:6px 14px; font-size:0.8rem; border-radius:6px; cursor:pointer;">
-          Paste Firebase Config &rarr;
-        </button>
       </div>
     `);
     return;
@@ -1287,15 +1313,39 @@ window.signInWithGoogle = async function(e) {
     console.error("Firebase Google Auth error:", err);
     if (err.code === 'auth/popup-closed-by-user') {
       displayAuthAlert('info', 'Google sign-in popup was closed.');
+    } else if (err.code === 'auth/popup-blocked') {
+      displayAuthAlert('error', `Pop-up was blocked by browser. Please allow popups for <strong>${window.location.hostname}</strong> or try clicking again.`);
     } else if (err.code === 'auth/unauthorized-domain') {
-      displayAuthAlert('error', `This domain ("${window.location.hostname}") is not yet authorized in Firebase Console > Authentication > Settings > Authorized domains. Please add "${window.location.hostname}" there.`);
+      const isLoopback = window.location.hostname === '127.0.0.1';
+      displayAuthAlert('error', `
+        <div style="text-align:left; line-height: 1.5;">
+          <strong>Domain Not Authorized in Firebase</strong><br>
+          <span style="font-size:0.82rem; display:block; margin:6px 0;">
+            ${isLoopback ? `Firebase pre-authorizes <code>localhost</code> by default. Try accessing via: <br><a href="${window.location.href.replace('127.0.0.1', 'localhost')}" style="color:#60a5fa; font-weight:700; text-decoration:underline;">http://localhost:5500</a><br><br>Or add <code>127.0.0.1</code> under <strong>Firebase Console &rarr; Authentication &rarr; Settings &rarr; Authorized domains</strong>.` : `Please add <code>${window.location.hostname}</code> to <strong>Firebase Console &rarr; Authentication &rarr; Settings &rarr; Authorized domains</strong>.`}
+          </span>
+        </div>
+      `);
+    } else if (err.code === 'auth/operation-not-allowed') {
+      displayAuthAlert('error', `
+        <div style="text-align:left; line-height: 1.5;">
+          <strong>Google Sign-In Disabled in Firebase Console</strong><br>
+          <span style="font-size:0.82rem; display:block; margin:6px 0;">
+            Please enable Google Sign-In:<br>
+            1. Open <a href="https://console.firebase.google.com" target="_blank" style="color:#60a5fa; text-decoration:underline;">Firebase Console</a> &rarr; <strong>Authentication</strong> &rarr; <strong>Sign-in method</strong><br>
+            2. Click <strong>Google</strong> &rarr; Switch to <strong>Enable</strong><br>
+            3. Select your support email &rarr; Click <strong>Save</strong>.
+          </span>
+        </div>
+      `);
     } else {
-      displayAuthAlert('error', `Google Authentication failed: ${err.message}`);
+      displayAuthAlert('error', `Google Authentication failed: ${err.message || err.code}`);
     }
   }
 };
 
 window.handleGoogleAuth = window.signInWithGoogle;
+window.handleGoogleSignInClick = window.signInWithGoogle;
+window.triggerGoogleSignIn = window.signInWithGoogle;
 
 
 // Central User Authentication & State Manager
@@ -1618,6 +1668,8 @@ window.signInWithEmail = async function(email, password) {
     console.error("Sign in error:", err);
     if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
       displayAuthAlert('error', 'Invalid email or password. Access denied.');
+    } else if (err.code === 'auth/operation-not-allowed') {
+      displayAuthAlert('error', 'Email/Password sign-in is not enabled in Firebase Console yet. Please enable it under <strong>Authentication &rarr; Sign-in method &rarr; Email/Password &rarr; Enable &rarr; Save</strong>.');
     } else {
       displayAuthAlert('error', err.message || 'Authentication failed. Access denied.');
     }
@@ -1677,6 +1729,8 @@ window.signUpWithEmail = async function(email, password, name) {
     console.error("Sign up error:", err);
     if (err.code === 'auth/email-already-in-use') {
       displayAuthAlert('error', `An account with "<strong>${email}</strong>" already exists. Please Sign In.`);
+    } else if (err.code === 'auth/operation-not-allowed') {
+      displayAuthAlert('error', 'Email/Password registration is not enabled in Firebase Console yet. Please enable it under <strong>Authentication &rarr; Sign-in method &rarr; Email/Password &rarr; Enable &rarr; Save</strong>.');
     } else {
       displayAuthAlert('error', err.message || 'Registration failed.');
     }

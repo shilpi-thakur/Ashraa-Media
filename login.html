@@ -441,6 +441,13 @@
         window.signInWithGoogle(e);
       } else if (typeof window.handleGoogleAuth === 'function' && window.handleGoogleAuth !== handleGoogleSignInClick) {
         window.handleGoogleAuth(e);
+      } else {
+        const alertEl = document.getElementById('authAlert');
+        if (alertEl) {
+          alertEl.className = 'auth-alert info';
+          alertEl.textContent = 'Connecting to Google Authentication services... Please wait a moment and click again.';
+          alertEl.style.display = 'block';
+        }
       }
     }
 
@@ -465,6 +472,6 @@
     }
   </script>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=2.1"></script>
 </body>
 </html>
